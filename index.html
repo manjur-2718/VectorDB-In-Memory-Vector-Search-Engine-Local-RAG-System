@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VectorDB — HNSW + RAG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0d1017;
+  --card:     #141722;
+  --surface:  #1a1e2e;
+  --border:   #262d40;
+  --border-h: #374058;
+  --cs:       #4db8e8;
+  --math:     #b07ce8;
+  --food:     #e8945a;
+  --sports:   #4dd88a;
+  --accent:   #5b7cf5;
+  --accent-h: #7d9bff;
+  --text:     #c5ccdb;
+  --text-b:   #e4e8f2;
+  --muted:    #596882;
+  --red:      #e06c75;
+  --green:    #61d88a;
+  --focus:    rgba(91,124,245,.3);
+  --shadow:   rgba(0,0,0,.35);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  height: 100vh; overflow: hidden;
+  display: flex; flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 22px;
+  display: flex; align-items: center; gap: 14px; flex-shrink: 0;
+  box-shadow: 0 1px 4px var(--shadow);
+}
+header h1 {
+  font-size: 14px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+  background: linear-gradient(135deg, var(--cs), var(--accent), var(--math));
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.badge {
+  font-size: 9px; font-weight: 500; padding: 3px 9px; border-radius: 12px;
+  letter-spacing: 1.2px; border: 1px solid var(--border); color: var(--muted);
+  transition: all .3s ease;
+  font-family: 'JetBrains Mono', monospace;
+}
+.badge.hl { border-color: var(--accent); color: var(--accent); background: rgba(98,114,164,.1); }
+.badge.ok { border-color: var(--green); color: var(--green); background: rgba(140,185,144,.08); }
+.badge.err { border-color: var(--red); color: var(--red); background: rgba(196,122,130,.08); }
+#statsLabel {
+  margin-left: auto; font-size: 11px; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace; font-weight: 400;
+}
+
+/* ── LAYOUT ── */
+.layout { display: flex; flex: 1; overflow: hidden; }
+.left-panel {
+  width: 260px; flex-shrink: 0; background: var(--card);
+  border-right: 1px solid var(--border); overflow-y: auto;
+  padding: 18px; display: flex; flex-direction: column; gap: 20px;
+}
+.center-panel { flex: 1; position: relative; overflow: hidden; }
+#scatter { display: block; width: 100%; height: 100%; }
+.right-panel {
+  width: 370px; flex-shrink: 0; background: var(--card);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* ── TABS ── */
+.tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.tab {
+  flex: 1; padding: 11px 6px; text-align: center;
+  font-size: 10px; font-weight: 600; letter-spacing: 1.5px; cursor: pointer;
+  color: var(--muted); border-bottom: 2px solid transparent;
+  transition: all .25s ease;
+}
+.tab:hover { color: var(--text); }
+.tab.on { color: var(--accent-h); border-bottom-color: var(--accent); background: linear-gradient(to top, rgba(91,124,245,.06), transparent); }
+.tab-content {
+  display: none; flex: 1; overflow-y: auto; padding: 18px;
+  flex-direction: column; gap: 18px;
+}
+.tab-content.on { display: flex; }
+
+/* ── COMMON COMPONENTS ── */
+.sec {
+  font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 10px;
+}
+input[type=text], select, textarea {
+  width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  padding: 10px 12px; border-radius: 8px; font-family: inherit; font-size: 12px;
+  outline: none; transition: border-color .25s ease, box-shadow .25s ease;
+}
+input[type=text]:focus, select:focus, textarea:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus);
+}
+textarea { resize: vertical; min-height: 100px; line-height: 1.6; }
+select option { background: var(--card); }
+input[type=range] { width: 100%; accent-color: var(--accent); background: transparent; border: none; padding: 0; }
+
+button {
+  width: 100%; padding: 10px 14px; border: none; border-radius: 8px; cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 600; letter-spacing: .4px;
+  transition: all .25s ease;
+}
+.btn-p {
+  background: linear-gradient(135deg, #5b7cf5, #4a5fd0);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(91,124,245,.3);
+}
+.btn-p:hover {
+  box-shadow: 0 4px 20px rgba(91,124,245,.45);
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #6d8cff, #5b7cf5);
+}
+.btn-p:active { transform: translateY(0); }
+.btn-p:disabled { opacity: .5; transform: none; cursor: wait; }
+
+.btn-s {
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+}
+.btn-s:hover { background: var(--border); border-color: var(--border-h); }
+.btn-s:disabled { opacity: .5; cursor: wait; }
+
+.btn-g {
+  background: rgba(97,216,138,.1); color: var(--green);
+  border: 1px solid rgba(97,216,138,.25);
+}
+.btn-g:hover { background: rgba(97,216,138,.2); }
+.btn-g:disabled { opacity: .5; cursor: wait; }
+
+.algo-row { display: flex; gap: 6px; }
+.algo-btn {
+  flex: 1; padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--muted); font-size: 10px; font-weight: 600;
+  cursor: pointer; text-align: center; transition: all .25s ease;
+  letter-spacing: .8px; font-family: 'JetBrains Mono', monospace;
+}
+.algo-btn:hover { border-color: var(--border-h); color: var(--text); }
+.algo-btn.on { border-color: var(--accent); color: var(--accent-h); background: rgba(91,124,245,.1); }
+
+.legend { display: flex; flex-direction: column; gap: 6px; }
+.leg-row { display: flex; align-items: center; gap: 9px; font-size: 11px; color: var(--muted); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── RESULTS ── */
+.results { display: flex; flex-direction: column; gap: 8px; }
+.rcard {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px;
+  animation: cardIn .3s ease both;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.rcard:hover { border-color: var(--border-h); box-shadow: 0 2px 8px var(--shadow); }
+.rrank { font-size: 9px; color: var(--muted); letter-spacing: 1.5px; margin-bottom: 4px; font-weight: 600; }
+.rmeta { font-size: 12px; line-height: 1.5; margin-bottom: 8px; color: var(--text-b); }
+.rfoot { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.rcat  {
+  font-size: 9px; font-weight: 600; padding: 3px 8px; border-radius: 10px;
+  letter-spacing: .5px; font-family: 'JetBrains Mono', monospace;
+}
+.rdist {
+  font-size: 10px; color: var(--muted); flex: 1; text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+}
+.del {
+  background: rgba(196,122,130,.1); color: var(--red); border: 1px solid rgba(196,122,130,.2);
+  border-radius: 6px; cursor: pointer; font-size: 10px; padding: 3px 8px;
+  font-family: inherit; transition: background .2s ease; width: auto;
+}
+.del:hover { background: rgba(196,122,130,.2); }
+
+/* ── LATENCY / BENCH / LAYERS ── */
+.lat-big {
+  font-size: 30px; font-weight: 700; color: var(--cs);
+  font-family: 'JetBrains Mono', monospace;
+}
+.lat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+.bench { display: flex; flex-direction: column; gap: 10px; }
+.brow  { display: flex; flex-direction: column; gap: 4px; }
+.blabel { display: flex; justify-content: space-between; font-size: 10px; font-weight: 500; }
+.btrack { height: 6px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.bfill  { height: 100%; border-radius: 4px; transition: width .6s cubic-bezier(.25,.8,.25,1); }
+.layers { display: flex; flex-direction: column; gap: 6px; }
+.lrow   { display: flex; align-items: center; gap: 8px; font-size: 10px; }
+.lnum   { width: 20px; text-align: right; color: var(--accent); font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+.ltrack { flex: 1; height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+.lfill  { height: 100%; background: var(--accent); border-radius: 3px; opacity: .6; transition: width .5s ease; }
+.lcount { width: 80px; text-align: right; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+#vecCvs { display: block; width: 100%; background: var(--bg); border-radius: 6px; }
+
+/* ── DOCUMENT LIST ── */
+.doc-list { display: flex; flex-direction: column; gap: 8px; }
+.dcard {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px; animation: cardIn .3s ease both;
+  transition: border-color .2s ease;
+}
+.dcard:hover { border-color: var(--border-h); }
+.dcard-title { font-size: 12px; font-weight: 600; margin-bottom: 5px; color: var(--green); }
+.dcard-preview { font-size: 11px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; }
+.dcard-foot { display: flex; justify-content: space-between; align-items: center; }
+.dcard-words { font-size: 9px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+/* ── OLLAMA STATUS ── */
+.ollama-status {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px; font-size: 11px; line-height: 1.7;
+}
+.ollama-status.ok { border-color: rgba(140,185,144,.25); }
+.ollama-status.err { border-color: rgba(196,122,130,.25); }
+
+/* ── CHAT ── */
+.chat-history { display: flex; flex-direction: column; gap: 14px; }
+.chat-q {
+  background: rgba(98,114,164,.1); border: 1px solid rgba(98,114,164,.2);
+  border-radius: 8px; padding: 12px 14px; font-size: 12px; line-height: 1.6;
+  color: var(--text-b); animation: cardIn .3s ease both;
+}
+.chat-a {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px; animation: cardIn .3s ease both;
+}
+.chat-a-label { font-size: 9px; font-weight: 600; letter-spacing: 2px; color: var(--green); margin-bottom: 8px; }
+.chat-a-text { font-size: 12px; line-height: 1.8; white-space: pre-wrap; color: var(--text); }
+.chat-ctx { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+.chat-ctx-label { font-size: 9px; font-weight: 600; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 8px; }
+.ctx-chip {
+  display: inline-block; font-size: 9px; font-weight: 500; padding: 3px 9px; border-radius: 12px;
+  margin: 2px; background: rgba(98,114,164,.08); border: 1px solid rgba(98,114,164,.18);
+  color: var(--accent-h); cursor: pointer; transition: all .2s ease;
+  font-family: 'JetBrains Mono', monospace;
+}
+.ctx-chip:hover { background: rgba(98,114,164,.18); }
+.ctx-expand {
+  display: none; font-size: 11px; color: var(--muted); line-height: 1.6;
+  margin-top: 8px; padding: 10px; background: var(--bg); border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.thinking { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--muted); }
+.spinner {
+  width: 14px; height: 14px; border: 2px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin .8s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.typing::after { content: '|'; animation: blink .9s step-end infinite; color: var(--accent); }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ── TOOLTIP ── */
+#tip {
+  position: fixed; display: none; background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 12px; font-size: 11px; pointer-events: none;
+  max-width: 240px; z-index: 200; line-height: 1.5;
+  box-shadow: 0 4px 16px var(--shadow);
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-h); }
+
+/* ── EMPTY STATE TEXT ── */
+.empty-state { color: var(--muted); font-size: 11px; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>VECTOR DATABASE</h1>
+  <span class="badge hl">HNSW</span>
+  <span class="badge">KD-TREE</span>
+  <span class="badge">BRUTE FORCE</span>
+  <span class="badge" id="ollamaBadge">OLLAMA</span>
+  <span id="statsLabel">loading...</span>
+</header>
+
+<div class="layout">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div>
+      <div class="sec">Query (Demo Vectors)</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input type="text" id="qInput" placeholder="binary tree, sushi, basketball..." />
+        <button class="btn-p" onclick="runSearch()">SEARCH</button>
+      </div>
+    </div>
+    <div>
+      <div class="sec">Algorithm</div>
+      <div class="algo-row">
+        <div class="algo-btn on" data-algo="hnsw"      onclick="setAlgo(this)">HNSW</div>
+        <div class="algo-btn"   data-algo="kdtree"     onclick="setAlgo(this)">KD-TREE</div>
+        <div class="algo-btn"   data-algo="bruteforce" onclick="setAlgo(this)">BRUTE</div>
+      </div>
+    </div>
+    <div>
+      <div class="sec">Distance Metric</div>
+      <select id="metric">
+        <option value="cosine">Cosine Similarity</option>
+        <option value="euclidean">Euclidean Distance</option>
+        <option value="manhattan">Manhattan Distance</option>
+      </select>
+    </div>
+    <div>
+      <div class="sec">Top-K: <span id="kLabel">5</span></div>
+      <input type="range" id="kSlider" min="1" max="10" value="5"
+             oninput="document.getElementById('kLabel').textContent=this.value">
+    </div>
+    <div>
+      <div class="sec">Category Legend</div>
+      <div class="legend">
+        <div class="leg-row"><div class="dot" style="background:var(--cs)"></div>CS / Algorithms</div>
+        <div class="leg-row"><div class="dot" style="background:var(--math)"></div>Mathematics</div>
+        <div class="leg-row"><div class="dot" style="background:var(--food)"></div>Food &amp; Cooking</div>
+        <div class="leg-row"><div class="dot" style="background:var(--sports)"></div>Sports &amp; Games</div>
+        <div class="leg-row"><div class="dot" style="background:var(--green)"></div>Documents (RAG)</div>
+      </div>
+    </div>
+    <div>
+      <div class="sec">Insert Demo Vector</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input type="text" id="addMeta" placeholder="Description..." />
+        <select id="addCat">
+          <option value="cs">CS / Algorithms</option>
+          <option value="math">Mathematics</option>
+          <option value="food">Food &amp; Cooking</option>
+          <option value="sports">Sports &amp; Games</option>
+        </select>
+        <button class="btn-s" onclick="addVector()">INSERT</button>
+      </div>
+    </div>
+    <div>
+      <div class="sec">Benchmark</div>
+      <button class="btn-s" onclick="runBenchmark()">COMPARE ALL ALGORITHMS</button>
+    </div>
+  </div>
+
+  <!-- CENTER: SCATTER PLOT -->
+  <div class="center-panel"><canvas id="scatter"></canvas></div>
+
+  <!-- RIGHT PANEL: TABS -->
+  <div class="right-panel">
+    <div class="tabs">
+      <div class="tab on"  onclick="switchTab('search')">SEARCH</div>
+      <div class="tab"     onclick="switchTab('docs')">DOCUMENTS</div>
+      <div class="tab"     onclick="switchTab('rag')">ASK AI</div>
+    </div>
+
+    <!-- TAB: SEARCH -->
+    <div class="tab-content on" id="tab-search">
+      <div>
+        <div class="sec">Search Latency</div>
+        <div class="lat-big" id="latBig">&mdash;</div>
+        <div class="lat-sub" id="latSub">No query yet</div>
+      </div>
+      <div>
+        <div class="sec">Top Matches</div>
+        <div class="results" id="results">
+          <div class="empty-state">Run a search to see results.</div>
+        </div>
+      </div>
+      <div>
+        <div class="sec">Query Embedding (16D)</div>
+        <canvas id="vecCvs" height="76"></canvas>
+      </div>
+      <div id="benchSec" style="display:none">
+        <div class="sec">Algorithm Comparison</div>
+        <div class="bench" id="benchBars"></div>
+      </div>
+      <div>
+        <div class="sec">HNSW Graph Layers</div>
+        <div class="layers" id="layers">
+          <div class="empty-state">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: DOCUMENTS -->
+    <div class="tab-content" id="tab-docs">
+      <div>
+        <div class="sec">Ollama Status</div>
+        <div class="ollama-status" id="ollamaStatus">Checking...</div>
+      </div>
+      <div>
+        <div class="sec">Insert Document</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input type="text" id="docTitle" placeholder="Document title or topic..." />
+          <textarea id="docText" placeholder="Paste your notes, textbook excerpt, or lecture content.&#10;&#10;Long text is automatically split into overlapping chunks. Each chunk is embedded via Ollama's nomic-embed-text model."></textarea>
+          <button class="btn-g" id="insertDocBtn" onclick="insertDocument()">EMBED AND INSERT</button>
+          <div id="insertStatus" style="font-size:11px;color:var(--muted)"></div>
+        </div>
+      </div>
+      <div>
+        <div class="sec">Stored Documents (<span id="docCountLabel">0</span>)</div>
+        <div class="doc-list" id="docList">
+          <div class="empty-state">No documents yet. Insert some above.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: ASK AI (RAG) -->
+    <div class="tab-content" id="tab-rag">
+      <div>
+        <div class="sec">Ask a Question</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <textarea id="ragQuestion" rows="3" placeholder="What is dynamic programming?&#10;Explain the main idea of HNSW.&#10;How does the recipe differ from..."></textarea>
+          <div style="display:flex;gap:6px">
+            <select id="ragK" style="width:auto;flex-shrink:0">
+              <option value="2">Top 2</option>
+              <option value="3" selected>Top 3</option>
+              <option value="5">Top 5</option>
+            </select>
+            <button class="btn-g" id="askBtn" onclick="askAI()" style="flex:1">ASK AI</button>
+          </div>
+          <div style="font-size:10px;color:var(--muted)">Uses your inserted documents as context. Answers come from the local LLM.</div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div class="sec" style="margin-bottom:0">Conversation</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span id="memBadge" style="font-size:10px;padding:2px 8px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--accent-h);font-family:var(--font-mono)">Memory: 0 / 20</span>
+            <button class="btn-s" onclick="clearMemory()" style="padding:2px 8px;font-size:10px;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:4px" title="Reset conversation memory window">Reset Memory</button>
+          </div>
+        </div>
+        <div class="chat-history" id="chatHistory">
+          <div class="empty-state">Ask a question about your inserted documents. Multi-turn dialogue context is retained up to 20 messages.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end right-panel -->
+</div><!-- end layout -->
+
+<div id="tip"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  CONSTANTS
+// ════════════════════════════════════════════════════════════
+const API  = 'http://localhost:8080';
+const DIMS = 16;
+const COL  = { cs:'#4db8e8', math:'#b07ce8', food:'#e8945a', sports:'#4dd88a', doc:'#61d88a', default:'#7a8bb0' };
+const DIM_COL = ['#4db8e8','#4db8e8','#4db8e8','#4db8e8','#b07ce8','#b07ce8','#b07ce8','#b07ce8',
+                 '#e8945a','#e8945a','#e8945a','#e8945a','#4dd88a','#4dd88a','#4dd88a','#4dd88a'];
+
+// ════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════
+let allItems = [], pcaPoints = [], hitIds = new Set(), queryPt = null;
+let hoverItem = null, pulse = 0, selAlgo = 'hnsw', searchResults = [];
+let chatMemory = [];
+const MAX_MEMORY = 20;
+
+function updateMemoryBadge() {
+  const badge = document.getElementById('memBadge');
+  if (!badge) return;
+  const count = chatMemory.length;
+  badge.textContent = `Memory: ${count} / ${MAX_MEMORY}`;
+  if (count >= MAX_MEMORY) {
+    badge.style.borderColor = 'var(--food)';
+    badge.style.color = 'var(--food)';
+    badge.title = 'Sliding window active: retaining last 20 messages context';
+  } else if (count > 0) {
+    badge.style.borderColor = 'var(--green)';
+    badge.style.color = 'var(--green)';
+    badge.title = `${count} messages in active context history`;
+  } else {
+    badge.style.borderColor = 'var(--border)';
+    badge.style.color = 'var(--accent-h)';
+    badge.title = 'No active dialogue context';
+  }
+}
+
+function saveChatHistoryToStorage() {
+  try {
+    localStorage.setItem('vector_rag_memory', JSON.stringify(chatMemory));
+    const history = document.getElementById('chatHistory');
+    if (history) {
+      localStorage.setItem('vector_rag_html', history.innerHTML);
+    }
+  } catch(e) {}
+}
+
+function restoreChatHistory() {
+  try {
+    const savedMem = localStorage.getItem('vector_rag_memory');
+    if (savedMem) {
+      chatMemory = JSON.parse(savedMem) || [];
+      if (chatMemory.length > MAX_MEMORY) {
+        chatMemory = chatMemory.slice(-MAX_MEMORY);
+      }
+    }
+    const savedHtml = localStorage.getItem('vector_rag_html');
+    const history = document.getElementById('chatHistory');
+    if (savedHtml && history && chatMemory.length > 0) {
+      history.innerHTML = savedHtml;
+      history.querySelectorAll('.thinking').forEach(el => el.remove());
+      history.querySelectorAll('.typing').forEach(el => el.classList.remove('typing'));
+    }
+    updateMemoryBadge();
+  } catch(e) {}
+}
+
+function clearMemory() {
+  chatMemory = [];
+  try {
+    localStorage.removeItem('vector_rag_memory');
+    localStorage.removeItem('vector_rag_html');
+  } catch(e) {}
+  updateMemoryBadge();
+  const history = document.getElementById('chatHistory');
+  if (history) {
+    history.innerHTML = '<div class="empty-state">Ask a question about your inserted documents. Multi-turn dialogue context is retained up to 20 messages.</div>';
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  TABS
+// ════════════════════════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const names = ['search','docs','rag'];
+    t.classList.toggle('on', names[i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('on'));
+  document.getElementById('tab-' + name).classList.add('on');
+  if (name === 'docs') loadDocList();
+}
+
+// ════════════════════════════════════════════════════════════
+//  TEXT → 16-D EMBEDDING (for demo vectors)
+// ════════════════════════════════════════════════════════════
+const KW = {
+  cs:     ['algorithm','data','tree','graph','array','linked','hash','stack','queue','sort','binary','dynamic','programming','recursion','complexity','pointer','node','search','insert','bfs','dfs','heap','trie'],
+  math:   ['calculus','matrix','probability','theorem','integral','derivative','linear','algebra','equation','function','prime','modular','combinatorics','permutation','eigenvalue','statistics','proof'],
+  food:   ['food','pizza','sushi','ramen','pasta','recipe','cook','eat','restaurant','dish','ingredient','flavor','spice','noodle','bread','croissant','taco','fish','rice','soup'],
+  sports: ['sport','basketball','football','tennis','chess','swim','game','play','score','team','athlete','competition','match','tournament','olympic','dribble','tackle','serve']
+};
+
+function textToEmbedding(text) {
+  const t = text.toLowerCase(), ws = t.split(/\s+/);
+  const s = {cs:0,math:0,food:0,sports:0};
+  for (const w of ws)
+    for (const [cat, kws] of Object.entries(KW))
+      for (const kw of kws) if (w.includes(kw)||kw.startsWith(w)) { s[cat]+=0.35; break; }
+  const mx = Math.max(...Object.values(s), 0.01);
+  const n = v => Math.min(v/mx*0.88, 0.94);
+  const jitter = () => (Math.random()-.5)*.04;
+  const emb = new Array(16).fill(0.08);
+  const fill = (i,score) => {
+    if (score<.01) return;
+    const b = n(score);
+    emb[i]=Math.max(.05,b+jitter()); emb[i+1]=Math.max(.05,b+jitter());
+    emb[i+2]=Math.max(.05,b*.92+jitter()); emb[i+3]=Math.max(.05,b*.87+jitter());
+  };
+  fill(0,s.cs); fill(4,s.math); fill(8,s.food); fill(12,s.sports);
+  return emb;
+}
+
+// ════════════════════════════════════════════════════════════
+//  PCA
+// ════════════════════════════════════════════════════════════
+function pca2D(embs) {
+  const n = embs.length, d = embs[0].length;
+  if (n < 2) return embs.map(() => [0,0]);
+  const mean = new Array(d).fill(0);
+  for (const e of embs) for (let i=0;i<d;i++) mean[i]+=e[i]/n;
+  const X = embs.map(e => e.map((v,i)=>v-mean[i]));
+  function powerIter(X,excl) {
+    let v = new Array(d).fill(0).map(()=>Math.random()-.5);
+    if (excl) { let dot=v.reduce((s,vi,i)=>s+vi*excl[i],0); v=v.map((vi,i)=>vi-dot*excl[i]); }
+    let nrm = Math.sqrt(v.reduce((s,vi)=>s+vi*vi,0));
+    v = v.map(vi=>vi/nrm);
+    for (let it=0;it<200;it++) {
+      const Xv=X.map(xi=>xi.reduce((s,xij,j)=>s+xij*v[j],0));
+      const nv=new Array(d).fill(0);
+      for (let k=0;k<n;k++) for (let j=0;j<d;j++) nv[j]+=X[k][j]*Xv[k];
+      if (excl) { let dot=nv.reduce((s,vi,i)=>s+vi*excl[i],0); for (let i=0;i<d;i++) nv[i]-=dot*excl[i]; }
+      nrm=Math.sqrt(nv.reduce((s,vi)=>s+vi*vi,0));
+      if (nrm<1e-10) break;
+      const prev=v.slice(); v=nv.map(vi=>vi/nrm);
+      if (v.reduce((s,vi,i)=>s+(vi-prev[i])**2,0)<1e-12) break;
+    }
+    return v;
+  }
+  const pc1=powerIter(X,null), pc2=powerIter(X,pc1);
+  return X.map(x=>[x.reduce((s,v,i)=>s+v*pc1[i],0),x.reduce((s,v,i)=>s+v*pc2[i],0)]);
+}
+
+// ════════════════════════════════════════════════════════════
+//  SCATTER PLOT
+// ════════════════════════════════════════════════════════════
+const sc=document.getElementById('scatter'), ctx=sc.getContext('2d');
+let bounds={minX:-1,maxX:1,minY:-1,maxY:1};
+
+function resize() { const r=sc.parentElement.getBoundingClientRect(); sc.width=r.width; sc.height=r.height; }
+window.addEventListener('resize', resize);
+
+function w2c(wx,wy) {
+  const P=70,W=sc.width,H=sc.height,rx=bounds.maxX-bounds.minX||1,ry=bounds.maxY-bounds.minY||1;
+  return [P+((wx-bounds.minX)/rx)*(W-2*P), H-P-((wy-bounds.minY)/ry)*(H-2*P)];
+}
+
+function drawFrame() {
+  ctx.clearRect(0,0,sc.width,sc.height);
+  ctx.fillStyle='#0d1017'; ctx.fillRect(0,0,sc.width,sc.height);
+
+  // Grid
+  ctx.strokeStyle='#171c2a'; ctx.lineWidth=1;
+  for (let i=0;i<=8;i++) {
+    const tx=70+(i/8)*(sc.width-140),ty=70+(i/8)*(sc.height-140);
+    ctx.beginPath();ctx.moveTo(tx,70);ctx.lineTo(tx,sc.height-70);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(70,ty);ctx.lineTo(sc.width-70,ty);ctx.stroke();
+  }
+
+  // Axis labels
+  ctx.fillStyle='#2e3650'; ctx.font='11px Inter, sans-serif';
+  ctx.fillText('PC1',sc.width/2-12,sc.height-20);
+  ctx.save();ctx.translate(18,sc.height/2+12);ctx.rotate(-Math.PI/2);ctx.fillText('PC2',0,0);ctx.restore();
+
+  // Title
+  ctx.fillStyle='#2e3650'; ctx.font='500 12px Inter, sans-serif';
+  ctx.fillText('2D PCA Projection',80,28);
+
+  // Connection lines for hits
+  if (queryPt && hitIds.size>0) {
+    const [qx,qy]=w2c(queryPt.x,queryPt.y);
+    for (const pt of pcaPoints) {
+      if (!hitIds.has(pt.item.id)) continue;
+      const [px,py]=w2c(pt.x,pt.y);
+      ctx.strokeStyle='rgba(91,124,245,0.2)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+      ctx.beginPath();ctx.moveTo(qx,qy);ctx.lineTo(px,py);ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // Points
+  for (const pt of pcaPoints) {
+    const [cx,cy]=w2c(pt.x,pt.y);
+    const col=COL[pt.item.category]||COL.default;
+    const isHit=hitIds.has(pt.item.id), r=isHit?9:6;
+
+    if (isHit) {
+      const pr=r+6+Math.sin(pulse)*3;
+      ctx.beginPath();ctx.arc(cx,cy,pr,0,2*Math.PI);
+      ctx.strokeStyle=col+'44';ctx.lineWidth=1.5;ctx.stroke();
+    }
+
+    // Soft glow
+    const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,r*2.5);
+    grd.addColorStop(0,col+(isHit?'55':'30'));grd.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(cx,cy,r*2.5,0,2*Math.PI);ctx.fillStyle=grd;ctx.fill();
+
+    // Core dot
+    ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);ctx.fillStyle=col;ctx.globalAlpha=isHit?1:.85;ctx.fill();ctx.globalAlpha=1;
+
+    if (hoverItem&&hoverItem.id===pt.item.id) {
+      ctx.beginPath();ctx.arc(cx,cy,r+4,0,2*Math.PI);ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.stroke();
+    }
+  }
+
+  // Query star
+  if (queryPt) {
+    const [qx,qy]=w2c(queryPt.x,queryPt.y);
+    ctx.save();ctx.translate(qx,qy);
+    ctx.shadowColor='rgba(226,230,238,.5)';ctx.shadowBlur=12;
+    ctx.beginPath();
+    for (let i=0;i<10;i++){const a=(i*Math.PI/5)-Math.PI/2,rr=i%2===0?11:4;if(i===0)ctx.moveTo(Math.cos(a)*rr,Math.sin(a)*rr);else ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}
+    ctx.closePath();ctx.fillStyle='#e2e6ee';ctx.fill();
+    ctx.shadowBlur=0;ctx.restore();
+    ctx.fillStyle='#636b82';ctx.font='500 10px Inter, sans-serif';ctx.fillText('query',qx+14,qy+4);
+  }
+
+  // Empty state
+  if (!pcaPoints.length) {
+    ctx.fillStyle='#3a4260';ctx.font='500 13px Inter, sans-serif';ctx.textAlign='center';
+    ctx.fillText('Connecting to VectorDB...',sc.width/2,sc.height/2);ctx.textAlign='left';
+  }
+
+  pulse+=0.045;
+  requestAnimationFrame(drawFrame);
+}
+
+sc.addEventListener('mousemove', e => {
+  const rect=sc.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  hoverItem=null; let best=18;
+  for (const pt of pcaPoints) {
+    const [cx,cy]=w2c(pt.x,pt.y),d=Math.hypot(mx-cx,my-cy);
+    if (d<best){best=d;hoverItem=pt.item;}
+  }
+  const tip=document.getElementById('tip');
+  if (hoverItem) {
+    const col=COL[hoverItem.category]||COL.default;
+    tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-8)+'px';
+    tip.innerHTML=`<span style="color:${col};font-weight:600">[${hoverItem.category}]</span><br>${hoverItem.metadata}`;
+  } else tip.style.display='none';
+});
+sc.addEventListener('mouseleave',()=>{hoverItem=null;document.getElementById('tip').style.display='none';});
+
+// ════════════════════════════════════════════════════════════
+//  LOAD DEMO ITEMS
+// ════════════════════════════════════════════════════════════
+async function loadItems() {
+  try {
+    const r = await fetch(API+'/items');
+    allItems = await r.json();
+    if (allItems.length >= 2) {
+      const coords = pca2D(allItems.map(v=>v.embedding));
+      pcaPoints = allItems.map((item,i)=>({x:coords[i][0],y:coords[i][1],item}));
+      let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
+      for (const p of pcaPoints){x0=Math.min(x0,p.x);x1=Math.max(x1,p.x);y0=Math.min(y0,p.y);y1=Math.max(y1,p.y);}
+      const px=(x1-x0)*.18||.1,py=(y1-y0)*.18||.1;
+      bounds={minX:x0-px,maxX:x1+px,minY:y0-py,maxY:y1+py};
+    }
+    document.getElementById('statsLabel').textContent=allItems.length+' vectors  |  '+DIMS+' dims';
+  } catch(_) {}
+}
+
+// ════════════════════════════════════════════════════════════
+//  DEMO SEARCH
+// ════════════════════════════════════════════════════════════
+function setAlgo(el) {
+  document.querySelectorAll('.algo-btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on'); selAlgo=el.dataset.algo;
+}
+
+async function runSearch() {
+  const text=document.getElementById('qInput').value.trim(); if(!text)return;
+  const emb=textToEmbedding(text),k=parseInt(document.getElementById('kSlider').value);
+  const metric=document.getElementById('metric').value;
+  const url=`${API}/search?v=${emb.join(',')}&k=${k}&metric=${metric}&algo=${selAlgo}`;
+  try {
+    const r=await fetch(url), data=await r.json();
+    searchResults=data.results||[]; hitIds=new Set(searchResults.map(r=>r.id));
+    const us=data.latencyUs||0;
+    document.getElementById('latBig').textContent=us<1000?us+' us':(us/1000).toFixed(2)+' ms';
+    document.getElementById('latSub').textContent=selAlgo.toUpperCase()+'  |  '+metric+'  |  k='+k;
+    if (searchResults.length>0){
+      let sx=0,sy=0,sw=0;
+      for (let i=0;i<Math.min(3,searchResults.length);i++){
+        const pt=pcaPoints.find(p=>p.item.id===searchResults[i].id);
+        if(pt){const w=1/(i+1);sx+=pt.x*w;sy+=pt.y*w;sw+=w;}
+      }
+      if(sw>0)queryPt={x:sx/sw+(Math.random()-.5)*.015,y:sy/sw+(Math.random()-.5)*.015};
+    }
+    renderResults(searchResults); drawVecChart(emb);
+  } catch(_){alert('Cannot reach server. Is it running on :8080?');}
+}
+
+document.getElementById('qInput').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch();});
+
+function renderResults(results) {
+  if (!results||!results.length){document.getElementById('results').innerHTML='<div class="empty-state">No results</div>';return;}
+  document.getElementById('results').innerHTML=results.map((r,i)=>{
+    const col=COL[r.category]||COL.default;
+    return `<div class="rcard" style="animation-delay:${i*0.05}s" onmouseenter="hoverItem={id:${r.id}}" onmouseleave="hoverItem=null">
+      <div class="rrank">#${i+1} NEAREST</div>
+      <div class="rmeta">${r.metadata}</div>
+      <div class="rfoot">
+        <span class="rcat" style="background:${col}14;color:${col};border:1px solid ${col}33">${r.category.toUpperCase()}</span>
+        <span class="rdist">dist: ${r.distance.toFixed(5)}</span>
+        <button class="del" onclick="deleteItem(${r.id})">x</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function drawVecChart(emb) {
+  const vc=document.getElementById('vecCvs'),W=vc.parentElement.clientWidth;
+  vc.width=W;const vx=vc.getContext('2d');
+  vx.clearRect(0,0,W,76);vx.fillStyle='#0d1017';vx.fillRect(0,0,W,76);
+  const bw=(W-4)/DIMS;
+  for (let i=0;i<DIMS;i++){
+    const h=emb[i]*58,x=2+i*bw,col=DIM_COL[i];
+    vx.fillStyle=col+'88';vx.fillRect(x+1,63-h,bw-2,h);
+  }
+  vx.font='500 8px JetBrains Mono, monospace';vx.textAlign='center';
+  [['CS',0],['MATH',4],['FOOD',8],['SPORT',12]].forEach(([lbl,gi],i)=>{
+    vx.fillStyle=Object.values(COL)[i]+'66';vx.fillText(lbl,2+(gi+1.5)*bw,74);
+  });
+  vx.textAlign='left';
+}
+
+async function runBenchmark() {
+  const text=document.getElementById('qInput').value.trim()||'binary tree algorithm';
+  const emb=textToEmbedding(text),metric=document.getElementById('metric').value;
+  try {
+    const r=await fetch(`${API}/benchmark?v=${emb.join(',')}&k=5&metric=${metric}`);
+    const d=await r.json();
+    document.getElementById('benchSec').style.display='block';
+    const mx=Math.max(d.bruteforceUs,d.kdtreeUs,d.hnswUs,1);
+    document.getElementById('benchBars').innerHTML=[
+      {lbl:'Brute Force',us:d.bruteforceUs,col:'#e06c75'},
+      {lbl:'KD-Tree',    us:d.kdtreeUs,    col:'#4db8e8'},
+      {lbl:'HNSW',       us:d.hnswUs,      col:'#b07ce8'},
+    ].map(({lbl,us,col})=>{
+      const pct=Math.max((us/mx)*100,2),disp=us<1000?us+' us':(us/1000).toFixed(2)+' ms';
+      return `<div class="brow"><div class="blabel"><span style="color:${col}">${lbl}</span><span style="color:var(--muted)">${disp}</span></div><div class="btrack"><div class="bfill" style="width:${pct}%;background:${col}"></div></div></div>`;
+    }).join('');
+  } catch(_) {}
+}
+
+async function loadHNSW() {
+  try {
+    const r=await fetch(API+'/hnsw-info'), d=await r.json();
+    const maxN=d.nodesPerLayer[0]||1;
+    document.getElementById('layers').innerHTML=d.nodesPerLayer.map((cnt,lyr)=>{
+      const pct=Math.max((cnt/maxN)*100,2),edg=d.edgesPerLayer[lyr]||0;
+      return `<div class="lrow"><div class="lnum">L${lyr}</div><div class="ltrack"><div class="lfill" style="width:${pct}%"></div></div><div class="lcount">${cnt}n | ${edg}e</div></div>`;
+    }).join('')||'<div class="empty-state">Empty</div>';
+  } catch(_) {}
+}
+
+async function addVector() {
+  const meta=document.getElementById('addMeta').value.trim(),cat=document.getElementById('addCat').value;
+  if(!meta)return;
+  const emb=textToEmbedding(meta+' '+cat);
+  try {
+    await fetch(API+'/insert',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({metadata:meta,category:cat,embedding:emb})});
+    document.getElementById('addMeta').value='';
+    await loadItems();loadHNSW();
+  } catch(_) {}
+}
+
+async function deleteItem(id) {
+  try {
+    await fetch(`${API}/delete/${id}`,{method:'DELETE'});
+    searchResults=searchResults.filter(r=>r.id!==id);hitIds.delete(id);
+    renderResults(searchResults);await loadItems();loadHNSW();
+  } catch(_) {}
+}
+
+// ════════════════════════════════════════════════════════════
+//  DOCUMENT MANAGEMENT
+// ════════════════════════════════════════════════════════════
+async function checkOllamaStatus() {
+  try {
+    const r=await fetch(API+'/status'), d=await r.json();
+    const badge=document.getElementById('ollamaBadge');
+    const box=document.getElementById('ollamaStatus');
+    if (d.ollamaAvailable) {
+      badge.className='badge ok'; badge.textContent='OLLAMA';
+      box.className='ollama-status ok';
+      box.innerHTML=`<span style="color:var(--green)">Online</span><br>`+
+        `Embed: <span style="color:var(--accent-h)">${d.embedModel}</span><br>`+
+        `Generate: <span style="color:var(--accent-h)">${d.genModel}</span><br>`+
+        `Dims: <span style="color:var(--muted)">${d.docDims||'(first insert sets this)'}</span><br>`+
+        `Documents: <span style="color:var(--text)">${d.docCount}</span>`;
+    } else {
+      badge.className='badge err'; badge.textContent='OLLAMA';
+      box.className='ollama-status err';
+      box.innerHTML=`<span style="color:var(--red)">Offline</span><br><br>`+
+        `To enable RAG features:<br>`+
+        `<span style="color:var(--muted)">1. Install from ollama.com<br>`+
+        `2. ollama pull nomic-embed-text<br>`+
+        `3. ollama pull llama3.2</span>`;
+    }
+  } catch(_) {}
+}
+
+async function insertDocument() {
+  const title=document.getElementById('docTitle').value.trim();
+  const text=document.getElementById('docText').value.trim();
+  const btn=document.getElementById('insertDocBtn');
+  const status=document.getElementById('insertStatus');
+  if(!title||!text){status.textContent='Both a title and text are required.';return;}
+
+  btn.disabled=true; btn.textContent='Embedding...';
+  status.innerHTML='<span style="color:var(--muted)">Calling Ollama nomic-embed-text...</span>';
+
+  try {
+    const r=await fetch(API+'/doc/insert',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({title,text})
+    });
+    const d=await r.json();
+    if (d.error) {
+      status.innerHTML=`<span style="color:var(--red)">${d.error}</span>`;
+    } else {
+      status.innerHTML=`<span style="color:var(--green)">Inserted ${d.chunks} chunk(s) with ${d.dims}D embeddings</span>`;
+      document.getElementById('docTitle').value='';
+      document.getElementById('docText').value='';
+
+          // Insert a 16D fake vector into the visualizer DB so it shows up on the map
+          const emb16 = textToEmbedding(title + ' ' + text);
+          fetch(API+'/insert', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({metadata: title, category: 'doc', embedding: emb16})
+          }).then(() => { loadItems().then(loadHNSW); });
+
+      loadDocList(); checkOllamaStatus();
+    }
+  } catch(_) {
+    status.innerHTML='<span style="color:var(--red)">Server error</span>';
+  }
+  btn.disabled=false; btn.textContent='EMBED AND INSERT';
+}
+
+async function loadDocList() {
+  try {
+    const r=await fetch(API+'/doc/list'), docs=await r.json();
+    document.getElementById('docCountLabel').textContent=docs.length;
+    if (!docs.length) {
+      document.getElementById('docList').innerHTML='<div class="empty-state">No documents yet.</div>';
+      return;
+    }
+    document.getElementById('docList').innerHTML=docs.map(d=>`
+      <div class="dcard">
+        <div class="dcard-title">${d.title}</div>
+        <div class="dcard-preview">${d.preview}</div>
+        <div class="dcard-foot">
+          <span class="dcard-words">${d.words} words</span>
+          <button class="del" onclick="deleteDoc(${d.id})">x</button>
+        </div>
+      </div>`).join('');
+  } catch(_) {}
+}
+
+async function deleteDoc(id) {
+  try {
+    await fetch(`${API}/doc/delete/${id}`,{method:'DELETE'});
+    loadDocList(); checkOllamaStatus();
+  } catch(_) {}
+}
+
+// ════════════════════════════════════════════════════════════
+//  RAG  — Ask AI
+// ════════════════════════════════════════════════════════════
+document.getElementById('ragQuestion').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    askAI();
+  }
+});
+
+async function askAI() {
+  const question=document.getElementById('ragQuestion').value.trim();
+  if(!question)return;
+  const k=parseInt(document.getElementById('ragK').value);
+  const btn=document.getElementById('askBtn');
+  btn.disabled=true; btn.textContent='Thinking...';
+
+  const history=document.getElementById('chatHistory');
+  const empty=history.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  // Show question bubble
+  const qDiv=document.createElement('div'); qDiv.className='chat-q';
+  qDiv.textContent=question; history.appendChild(qDiv);
+
+  // Show thinking indicator
+  const thinkDiv=document.createElement('div'); thinkDiv.className='thinking';
+  thinkDiv.innerHTML='<div class="spinner"></div>Retrieving context and generating answer...';
+  history.appendChild(thinkDiv);
+  history.scrollTop=history.scrollHeight;
+
+  // Prior dialogue turns sent to backend
+  const priorHistory = [...chatMemory];
+  const turnId = 't_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+
+  // Update the scatter plot visualizer in the background using the real 768D DB
+  fetch(API+'/doc/search', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({question, k})
+  })
+  .then(res=>res.json())
+  .then(data => {
+    if (data.contexts && data.contexts.length > 0) {
+      hitIds = new Set();
+      let sx=0, sy=0, sw=0;
+      data.contexts.forEach((ctx, i) => {
+        // Match the RAG chunk title back to the visualizer document metadata
+        const pt = pcaPoints.find(p => p.item.category === 'doc' && ctx.title.startsWith(p.item.metadata));
+        if (pt) {
+          hitIds.add(pt.item.id);
+          const w = 1/(i+1); sx += pt.x*w; sy += pt.y*w; sw += w;
+        }
+      });
+      if (sw > 0) queryPt = {x: sx/sw + (Math.random()-.5)*.015, y: sy/sw + (Math.random()-.5)*.015};
+    } else {
+      hitIds = new Set();
+      // Fallback: If no RAG docs match, visually move the star to the 16D semantic space anyway!
+      const emb16 = textToEmbedding(question);
+      fetch(`${API}/search?v=${emb16.join(',')}&k=3&metric=cosine&algo=hnsw`)
+        .then(res2=>res2.json())
+        .then(data2 => {
+          if (data2.results && data2.results.length>0) {
+            let sx=0,sy=0,sw=0;
+            for (let i=0;i<Math.min(3,data2.results.length);i++) {
+              const pt=pcaPoints.find(p=>p.item.id===data2.results[i].id);
+              if(pt){const w=1/(i+1);sx+=pt.x*w;sy+=pt.y*w;sw+=w;}
+            }
+            if(sw>0) queryPt={x:sx/sw+(Math.random()-.5)*.015,y:sy/sw+(Math.random()-.5)*.015};
+          }
+        }).catch(()=>{});
+    }
+  }).catch(()=>{});
+
+  try {
+    const r=await fetch(API+'/doc/ask',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question, k, history: priorHistory})
+    });
+    const d=await r.json();
+    thinkDiv.remove();
+
+    const aDiv=document.createElement('div'); aDiv.className='chat-a';
+
+    if (d.error) {
+      aDiv.innerHTML=`<div class="chat-a-label">ERROR</div><div class="chat-a-text" style="color:var(--red)">${d.error}</div>`;
+      history.appendChild(aDiv);
+      saveChatHistoryToStorage();
+    } else {
+      // Record dialogue turn in memory window
+      chatMemory.push({ role: 'user', content: question });
+      chatMemory.push({ role: 'assistant', content: d.answer });
+      if (chatMemory.length > MAX_MEMORY) {
+        chatMemory = chatMemory.slice(-MAX_MEMORY);
+      }
+      updateMemoryBadge();
+
+      // Build answer block
+      const hasCtx = d.contexts && d.contexts.length > 0;
+      aDiv.innerHTML=`<div class="chat-a-label">${d.model||'llm'}</div>`+
+        `<div class="chat-a-text"></div>`+
+        (hasCtx ? (`<div class="chat-ctx">`+
+          `<div class="chat-ctx-label">RETRIEVED CONTEXT (${d.contexts.length} chunks)</div>`+
+          d.contexts.map((c,i)=>`<span class="ctx-chip" onclick="toggleCtx('${turnId}', ${i})">#${i+1} ${c.title} | ${c.distance.toFixed(3)}</span>`+
+            `<div class="ctx-expand" id="ctx-${turnId}-${i}">${c.text}</div>`).join('')+
+        `</div>`) : '');
+      history.appendChild(aDiv);
+
+      // Typewriter effect
+      const target=aDiv.querySelector('.chat-a-text');
+      target.classList.add('typing');
+      const full=d.answer; let i=0;
+      const timer=setInterval(()=>{
+        if(i>=full.length){
+          clearInterval(timer);
+          target.classList.remove('typing');
+          saveChatHistoryToStorage();
+          return;
+        }
+        const chunk=full.slice(i,i+3); target.textContent+=chunk; i+=3;
+        history.scrollTop=history.scrollHeight;
+      },16);
+    }
+  } catch(e) {
+    thinkDiv.remove();
+    const err=document.createElement('div');err.className='chat-a';
+    err.innerHTML='<div class="chat-a-label">ERROR</div><div class="chat-a-text" style="color:var(--red)">Server error. Is the backend running?</div>';
+    history.appendChild(err);
+    saveChatHistoryToStorage();
+  }
+
+  document.getElementById('ragQuestion').value='';
+  btn.disabled=false; btn.textContent='ASK AI';
+  history.scrollTop=history.scrollHeight;
+}
+
+function toggleCtx(arg1, arg2) {
+  const id = (arg2 !== undefined) ? `ctx-${arg1}-${arg2}` : `ctx-${arg1}`;
+  const el=document.getElementById(id);
+  if (el) el.style.display=el.style.display==='block'?'none':'block';
+}
+
+// ════════════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════════════
+restoreChatHistory();
+resize(); drawFrame();
+loadItems().then(loadHNSW);
+checkOllamaStatus();
+</script>
+</body>
+</html>

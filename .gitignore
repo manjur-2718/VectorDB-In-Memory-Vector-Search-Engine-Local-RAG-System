@@ -1,0 +1,34 @@
+# Compiled binaries and objects
+*.exe
+*.o
+*.obj
+*.out
+a.out
+db
+
+# Debug & symbols
+*.pdb
+*.ilk
+
+# Build directories
+build/
+bin/
+debug/
+release/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.user
+*.swp
+*.swo
+*~
+
+# Environment & logs
+.env
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
