@@ -16,7 +16,7 @@
 #include <fstream>
 #include <climits>
 
-static const int DIMS = 16;   // demo vectors
+static const int DIMS = 60;   // demo vectors
 // Doc embeddings dimension is determined at runtime from Ollama's model output
 
 // =====================================================================
@@ -331,7 +331,7 @@ public:
 };
 
 // =====================================================================
-//  VECTOR DATABASE  (demo 16D index)
+//  VECTOR DATABASE  (demo 60D index)
 // =====================================================================
 
 class VectorDB {
@@ -763,52 +763,217 @@ public:
 };
 
 // =====================================================================
-//  DEMO DATA  (16D categorical vectors)
+//  DEMO DATA  (60D categorical vectors across 15 categories)
 // =====================================================================
+
+// Helper to construct structured 60D categorical vectors
+// 15 categories x 4 dimensions each = 60 dimensions
+// Dominant category gets strong activations (0.75-0.92)
+// Cross-disciplinary ties get mild activations (~0.20)
+// Baseline ambient dimensions receive small realistic variations (0.04-0.08)
+static std::vector<float> makeVec60(int catIdx, float d0, float d1, float d2, float d3,
+                                    int relatedCat = -1, float relWeight = 0.20f) {
+    std::vector<float> v(DIMS);
+    for (int i = 0; i < DIMS; i++) {
+        v[i] = 0.05f + 0.03f * std::sin((float)(catIdx * 5 + i * 2));
+    }
+    if (relatedCat >= 0 && relatedCat < 15) {
+        int rbase = relatedCat * 4;
+        v[rbase + 0] = relWeight * 0.95f;
+        v[rbase + 1] = relWeight * 0.90f;
+        v[rbase + 2] = relWeight * 0.85f;
+        v[rbase + 3] = relWeight * 0.80f;
+    }
+    int base = catIdx * 4;
+    v[base + 0] = d0;
+    v[base + 1] = d1;
+    v[base + 2] = d2;
+    v[base + 3] = d3;
+    return v;
+}
 
 void loadDemo(VectorDB& db) {
     auto dist = getDistFn("cosine");
-    // Dims 0-3: CS | Dims 4-7: Math | Dims 8-11: Food | Dims 12-15: Sports
-    db.insert("Linked List: nodes connected by pointers", "cs",
-        {0.90f,0.85f,0.72f,0.68f,0.12f,0.08f,0.15f,0.10f,0.05f,0.08f,0.06f,0.09f,0.07f,0.11f,0.08f,0.06f}, dist);
-    db.insert("Binary Search Tree: O(log n) search and insert", "cs",
-        {0.88f,0.82f,0.78f,0.74f,0.15f,0.10f,0.08f,0.12f,0.06f,0.07f,0.08f,0.05f,0.09f,0.06f,0.07f,0.10f}, dist);
-    db.insert("Dynamic Programming: memoization overlapping subproblems", "cs",
-        {0.82f,0.76f,0.88f,0.80f,0.20f,0.18f,0.12f,0.09f,0.07f,0.06f,0.08f,0.07f,0.08f,0.09f,0.06f,0.07f}, dist);
-    db.insert("Graph BFS and DFS: breadth and depth first traversal", "cs",
-        {0.85f,0.80f,0.75f,0.82f,0.18f,0.14f,0.10f,0.08f,0.06f,0.09f,0.07f,0.06f,0.10f,0.08f,0.09f,0.07f}, dist);
-    db.insert("Hash Table: O(1) lookup with collision chaining", "cs",
-        {0.87f,0.78f,0.70f,0.76f,0.13f,0.11f,0.09f,0.14f,0.08f,0.07f,0.06f,0.08f,0.07f,0.10f,0.08f,0.09f}, dist);
-    db.insert("Calculus: derivatives integrals and limits", "math",
-        {0.12f,0.15f,0.18f,0.10f,0.91f,0.86f,0.78f,0.72f,0.08f,0.06f,0.07f,0.09f,0.07f,0.08f,0.06f,0.10f}, dist);
-    db.insert("Linear Algebra: matrices eigenvalues eigenvectors", "math",
-        {0.20f,0.18f,0.15f,0.12f,0.88f,0.90f,0.82f,0.76f,0.09f,0.07f,0.08f,0.06f,0.10f,0.07f,0.08f,0.09f}, dist);
-    db.insert("Probability: distributions random variables Bayes theorem", "math",
-        {0.15f,0.12f,0.20f,0.18f,0.84f,0.80f,0.88f,0.82f,0.07f,0.08f,0.06f,0.10f,0.09f,0.06f,0.09f,0.08f}, dist);
-    db.insert("Number Theory: primes modular arithmetic RSA cryptography", "math",
-        {0.22f,0.16f,0.14f,0.20f,0.80f,0.85f,0.76f,0.90f,0.08f,0.09f,0.07f,0.06f,0.08f,0.10f,0.07f,0.06f}, dist);
-    db.insert("Combinatorics: permutations combinations generating functions", "math",
-        {0.18f,0.20f,0.16f,0.14f,0.86f,0.78f,0.84f,0.80f,0.06f,0.07f,0.09f,0.08f,0.06f,0.09f,0.10f,0.07f}, dist);
-    db.insert("Neapolitan Pizza: wood-fired dough San Marzano tomatoes", "food",
-        {0.08f,0.06f,0.09f,0.07f,0.07f,0.08f,0.06f,0.09f,0.90f,0.86f,0.78f,0.72f,0.08f,0.06f,0.09f,0.07f}, dist);
-    db.insert("Sushi: vinegared rice raw fish and nori rolls", "food",
-        {0.06f,0.08f,0.07f,0.09f,0.09f,0.06f,0.08f,0.07f,0.86f,0.90f,0.82f,0.76f,0.07f,0.09f,0.06f,0.08f}, dist);
-    db.insert("Ramen: noodle soup with chashu pork and soft-boiled eggs", "food",
-        {0.09f,0.07f,0.06f,0.08f,0.08f,0.09f,0.07f,0.06f,0.82f,0.78f,0.90f,0.84f,0.09f,0.07f,0.08f,0.06f}, dist);
-    db.insert("Tacos: corn tortillas with carnitas salsa and cilantro", "food",
-        {0.07f,0.09f,0.08f,0.06f,0.06f,0.07f,0.09f,0.08f,0.78f,0.82f,0.86f,0.90f,0.06f,0.08f,0.07f,0.09f}, dist);
-    db.insert("Croissant: laminated pastry with buttery flaky layers", "food",
-        {0.06f,0.07f,0.10f,0.09f,0.10f,0.06f,0.07f,0.10f,0.85f,0.80f,0.76f,0.82f,0.09f,0.07f,0.10f,0.06f}, dist);
-    db.insert("Basketball: fast-paced shooting dribbling slam dunks", "sports",
-        {0.09f,0.07f,0.08f,0.10f,0.08f,0.09f,0.07f,0.06f,0.08f,0.07f,0.09f,0.06f,0.91f,0.85f,0.78f,0.72f}, dist);
-    db.insert("Football: tackles touchdowns field goals and strategy", "sports",
-        {0.07f,0.09f,0.06f,0.08f,0.09f,0.07f,0.10f,0.08f,0.07f,0.09f,0.08f,0.07f,0.87f,0.89f,0.82f,0.76f}, dist);
-    db.insert("Tennis: racket volleys groundstrokes and Wimbledon serves", "sports",
-        {0.08f,0.06f,0.09f,0.07f,0.07f,0.08f,0.06f,0.09f,0.09f,0.06f,0.07f,0.08f,0.83f,0.80f,0.88f,0.82f}, dist);
-    db.insert("Chess: openings endgames tactics strategic board game", "sports",
-        {0.25f,0.20f,0.22f,0.18f,0.22f,0.18f,0.20f,0.15f,0.06f,0.08f,0.07f,0.09f,0.80f,0.84f,0.78f,0.90f}, dist);
-    db.insert("Swimming: butterfly freestyle backstroke Olympic competition", "sports",
-        {0.06f,0.08f,0.07f,0.09f,0.08f,0.06f,0.09f,0.07f,0.10f,0.08f,0.06f,0.07f,0.85f,0.82f,0.86f,0.80f}, dist);
+
+    // Category 0: Computer Science & Algorithms (Dims 0-3)
+    db.insert("Linked List: linear data structure where elements point to subsequent nodes via dynamic pointers", "cs",
+        makeVec60(0, 0.90f, 0.85f, 0.72f, 0.68f, 1, 0.15f), dist);
+    db.insert("Binary Search Tree: hierarchical tree structure providing O(log n) average search, insertion, and deletion", "cs",
+        makeVec60(0, 0.88f, 0.82f, 0.78f, 0.74f, 1, 0.18f), dist);
+    db.insert("Dynamic Programming: algorithm design technique solving complex problems via memoized overlapping subproblems", "cs",
+        makeVec60(0, 0.82f, 0.76f, 0.88f, 0.80f, 1, 0.22f), dist);
+    db.insert("Graph BFS and DFS: fundamental graph traversal algorithms exploring neighbors breadth-first or depth-first", "cs",
+        makeVec60(0, 0.85f, 0.80f, 0.75f, 0.82f, 1, 0.14f), dist);
+    db.insert("Hash Table: associative data structure mapping keys to buckets using hash functions for O(1) average lookup", "cs",
+        makeVec60(0, 0.87f, 0.78f, 0.70f, 0.76f, 1, 0.12f), dist);
+
+    // Category 1: Mathematics & Logic (Dims 4-7)
+    db.insert("Calculus: mathematical study of continuous change through derivatives, integrals, and limits", "math",
+        makeVec60(1, 0.91f, 0.86f, 0.78f, 0.72f, 2, 0.24f), dist);
+    db.insert("Linear Algebra: branch studying vector spaces, linear mappings, matrix transformations, and eigenvectors", "math",
+        makeVec60(1, 0.88f, 0.90f, 0.82f, 0.76f, 0, 0.20f), dist);
+    db.insert("Probability Theory: mathematical framework analyzing random variables, likelihood distributions, and Bayes theorem", "math",
+        makeVec60(1, 0.84f, 0.80f, 0.88f, 0.82f, 9, 0.18f), dist);
+    db.insert("Number Theory: pure mathematics examining integer properties, prime factorization, and modular arithmetic", "math",
+        makeVec60(1, 0.80f, 0.85f, 0.76f, 0.90f, 0, 0.22f), dist);
+    db.insert("Combinatorics: branch of mathematics concerning discrete counting, permutations, and graph enumeration", "math",
+        makeVec60(1, 0.86f, 0.78f, 0.84f, 0.80f, 0, 0.25f), dist);
+
+    // Category 2: Physics & Astronomy (Dims 8-11)
+    db.insert("Quantum Superposition: quantum principle that physical systems simultaneously occupy multiple states until measured", "physics",
+        makeVec60(2, 0.92f, 0.86f, 0.80f, 0.75f, 1, 0.28f), dist);
+    db.insert("General Relativity: Einstein's geometric formulation describing gravity as the curvature of spacetime by mass", "physics",
+        makeVec60(2, 0.88f, 0.91f, 0.77f, 0.83f, 1, 0.26f), dist);
+    db.insert("Thermodynamics Second Law: physical law stating the total entropy of an isolated system increases over time", "physics",
+        makeVec60(2, 0.85f, 0.82f, 0.89f, 0.79f, 8, 0.22f), dist);
+    db.insert("Standard Model: fundamental quantum field theory classifying quarks, leptons, gauge bosons, and the Higgs field", "physics",
+        makeVec60(2, 0.82f, 0.87f, 0.84f, 0.90f, 8, 0.20f), dist);
+    db.insert("Electromagnetic Induction: Faraday's law demonstrating that time-varying magnetic flux induces an electric current", "physics",
+        makeVec60(2, 0.86f, 0.80f, 0.85f, 0.78f, 1, 0.18f), dist);
+
+    // Category 3: Geology & Earth Sciences (Dims 12-15)
+    db.insert("Plate Tectonics: scientific theory that Earth's lithosphere comprises rigid plates driving seismic and volcanic activity", "geology",
+        makeVec60(3, 0.90f, 0.84f, 0.81f, 0.75f, 2, 0.16f), dist);
+    db.insert("Metamorphic Rock: transformation of existing rock protoliths under extreme thermal heat and tectonic pressure", "geology",
+        makeVec60(3, 0.85f, 0.89f, 0.78f, 0.82f, 8, 0.19f), dist);
+    db.insert("Sedimentary Stratigraphy: geological discipline analyzing rock layer sedimentation, deposition epochs, and fossil records", "geology",
+        makeVec60(3, 0.82f, 0.86f, 0.88f, 0.77f, 7, 0.21f), dist);
+    db.insert("Mantle Convection: slow buoyant thermal circulation in Earth's mantle driving continental drift and volcanism", "geology",
+        makeVec60(3, 0.88f, 0.80f, 0.84f, 0.89f, 2, 0.20f), dist);
+    db.insert("Mohs Hardness Scale: empirical qualitative scale testing scratch resistance of minerals from talc to diamond", "geology",
+        makeVec60(3, 0.84f, 0.83f, 0.79f, 0.87f, 8, 0.22f), dist);
+
+    // Category 4: Geopolitics & Diplomacy (Dims 16-19)
+    db.insert("Heartland Theory: Mackinder's geopolitical thesis that controlling inner Eurasia commands the global heartland", "geopolitics",
+        makeVec60(4, 0.91f, 0.85f, 0.78f, 0.72f, 5, 0.25f), dist);
+    db.insert("Bilateral Diplomacy: formal political, economic, and strategic negotiations between two sovereign nation-states", "geopolitics",
+        makeVec60(4, 0.86f, 0.89f, 0.82f, 0.76f, 5, 0.22f), dist);
+    db.insert("Deterrence Doctrine: military strategy dissuading adversarial aggression through guaranteed devastating retaliation", "geopolitics",
+        makeVec60(4, 0.83f, 0.81f, 0.89f, 0.84f, 5, 0.18f), dist);
+    db.insert("Exclusive Economic Zone: UN maritime zone granting sovereign rights over marine resources up to 200 nautical miles", "geopolitics",
+        makeVec60(4, 0.80f, 0.86f, 0.84f, 0.88f, 9, 0.24f), dist);
+    db.insert("Balance of Power: international equilibrium principle preventing any single superpower from achieving absolute hegemony", "geopolitics",
+        makeVec60(4, 0.88f, 0.83f, 0.80f, 0.86f, 5, 0.27f), dist);
+
+    // Category 5: World History & Antiquity (Dims 20-23)
+    db.insert("Industrial Revolution: historical era of rapid technological shift from manual craft to mechanized steam production", "history",
+        makeVec60(5, 0.90f, 0.86f, 0.79f, 0.74f, 9, 0.25f), dist);
+    db.insert("Silk Road Trade: ancient continental trade route network connecting Han China, Central Asia, and Rome", "history",
+        makeVec60(5, 0.85f, 0.91f, 0.80f, 0.78f, 4, 0.23f), dist);
+    db.insert("Peace of Westphalia: 1648 diplomatic treaties establishing modern international sovereign statehood principles", "history",
+        makeVec60(5, 0.82f, 0.84f, 0.89f, 0.83f, 4, 0.30f), dist);
+    db.insert("Renaissance Humanism: cultural and intellectual movement reviving Greco-Roman antiquity, inquiry, and humanism", "history",
+        makeVec60(5, 0.88f, 0.79f, 0.85f, 0.87f, 10, 0.24f), dist);
+    db.insert("Magna Carta: 1215 royal charter establishing constitutional limits on monarchical authority and the rule of law", "history",
+        makeVec60(5, 0.84f, 0.87f, 0.76f, 0.91f, 4, 0.26f), dist);
+
+    // Category 6: Education & Pedagogy (Dims 24-27)
+    db.insert("Socratic Method: pedagogical dialectic inquiry stimulating critical thought through cooperative questioning", "education",
+        makeVec60(6, 0.91f, 0.87f, 0.76f, 0.70f, 10, 0.28f), dist);
+    db.insert("Bloom's Taxonomy: multi-tiered educational framework classifying cognitive learning objectives from recall to creation", "education",
+        makeVec60(6, 0.87f, 0.92f, 0.81f, 0.75f, 10, 0.20f), dist);
+    db.insert("Constructivism: educational philosophy where students actively construct knowledge through experiential learning", "education",
+        makeVec60(6, 0.83f, 0.80f, 0.89f, 0.82f, 10, 0.22f), dist);
+    db.insert("Spaced Repetition: evidence-based learning technique using timed review intervals to maximize mnemonic retention", "education",
+        makeVec60(6, 0.85f, 0.84f, 0.79f, 0.88f, 0, 0.19f), dist);
+    db.insert("Flipped Classroom: instructional model where lecture materials are studied independently and class time applies concepts", "education",
+        makeVec60(6, 0.89f, 0.81f, 0.84f, 0.85f, 0, 0.15f), dist);
+
+    // Category 7: Biology & Life Sciences (Dims 28-31)
+    db.insert("CRISPR-Cas9: molecular gene editing technology adapted from bacterial adaptive immune response mechanisms", "biology",
+        makeVec60(7, 0.92f, 0.85f, 0.79f, 0.74f, 8, 0.25f), dist);
+    db.insert("Cellular Respiration: biochemical metabolic process converting glucose and oxygen into cellular ATP energy", "biology",
+        makeVec60(7, 0.87f, 0.90f, 0.81f, 0.76f, 8, 0.27f), dist);
+    db.insert("DNA Double Helix: nucleic acid molecular structure composed of antiparallel strands with complementary base pairing", "biology",
+        makeVec60(7, 0.84f, 0.81f, 0.88f, 0.82f, 8, 0.24f), dist);
+    db.insert("Photosynthesis: anabolic biological process converting solar photon energy into glucose within chloroplasts", "biology",
+        makeVec60(7, 0.89f, 0.83f, 0.77f, 0.86f, 8, 0.26f), dist);
+    db.insert("Natural Selection: evolutionary mechanism where advantageous hereditary traits increase reproductive fitness", "biology",
+        makeVec60(7, 0.86f, 0.88f, 0.83f, 0.89f, 3, 0.18f), dist);
+
+    // Category 8: Chemistry & Molecular Science (Dims 32-35)
+    db.insert("Periodic Law: foundational principle organizing elements by increasing atomic number and periodic valence traits", "chemistry",
+        makeVec60(8, 0.90f, 0.87f, 0.80f, 0.72f, 2, 0.25f), dist);
+    db.insert("Covalent Bonding: chemical bond formed by the cooperative sharing of valence electron pairs between atomic nuclei", "chemistry",
+        makeVec60(8, 0.86f, 0.91f, 0.83f, 0.75f, 2, 0.22f), dist);
+    db.insert("Acid-Base Neutralization: aqueous chemical reaction between hydronium and hydroxide ions producing salt and water", "chemistry",
+        makeVec60(8, 0.83f, 0.79f, 0.89f, 0.81f, 7, 0.20f), dist);
+    db.insert("Gibbs Free Energy: thermodynamic state function quantifying maximum reversible work and reaction spontaneity", "chemistry",
+        makeVec60(8, 0.88f, 0.84f, 0.77f, 0.86f, 2, 0.28f), dist);
+    db.insert("Electronegativity: atomic chemical property measuring the ability of an atom to attract shared bonding electrons", "chemistry",
+        makeVec60(8, 0.85f, 0.88f, 0.82f, 0.90f, 2, 0.21f), dist);
+
+    // Category 9: Economics & Global Finance (Dims 36-39)
+    db.insert("Supply and Demand: microeconomic market model determining equilibrium pricing based on consumer and producer choices", "economics",
+        makeVec60(9, 0.91f, 0.86f, 0.77f, 0.71f, 1, 0.18f), dist);
+    db.insert("Monetary Policy: central bank interventions adjusting interest rates and liquidity to stabilize inflation and employment", "economics",
+        makeVec60(9, 0.87f, 0.90f, 0.82f, 0.76f, 4, 0.24f), dist);
+    db.insert("Comparative Advantage: economic theory demonstrating gains from trade when producing at lower opportunity cost", "economics",
+        makeVec60(9, 0.84f, 0.81f, 0.88f, 0.83f, 4, 0.22f), dist);
+    db.insert("Fiscal Stimulus: macroeconomic intervention using government expenditure or tax policy to counter economic recession", "economics",
+        makeVec60(9, 0.88f, 0.83f, 0.79f, 0.87f, 4, 0.26f), dist);
+    db.insert("Price Elasticity: economic measure quantifying the responsiveness of product quantity demanded to price shifts", "economics",
+        makeVec60(9, 0.85f, 0.87f, 0.84f, 0.89f, 1, 0.21f), dist);
+
+    // Category 10: Philosophy & Ethics (Dims 40-43)
+    db.insert("Categorical Imperative: Kantian deontological moral law demanding actions be universalizable as maxims", "philosophy",
+        makeVec60(10, 0.90f, 0.85f, 0.78f, 0.72f, 6, 0.23f), dist);
+    db.insert("Utilitarianism: normative consequentialist ethical theory seeking the greatest happiness for the greatest number", "philosophy",
+        makeVec60(10, 0.86f, 0.91f, 0.81f, 0.75f, 9, 0.20f), dist);
+    db.insert("Epistemology: core branch of philosophical study investigating the justification, truth, and limits of knowledge", "philosophy",
+        makeVec60(10, 0.83f, 0.80f, 0.89f, 0.82f, 6, 0.26f), dist);
+    db.insert("Existentialism: philosophical inquiry exploring authentic individuality, freedom of choice, and existential angst", "philosophy",
+        makeVec60(10, 0.87f, 0.82f, 0.84f, 0.88f, 11, 0.25f), dist);
+    db.insert("Stoicism: ancient Hellenistic philosophy emphasizing rational virtue, emotional equanimity, and accepting nature", "philosophy",
+        makeVec60(10, 0.84f, 0.88f, 0.79f, 0.86f, 11, 0.21f), dist);
+
+    // Category 11: Literature & Linguistics (Dims 44-47)
+    db.insert("Stream of Consciousness: modern narrative technique portraying a character's continuous unfiltered thought progression", "literature",
+        makeVec60(11, 0.91f, 0.84f, 0.77f, 0.73f, 10, 0.24f), dist);
+    db.insert("Dramatic Irony: storytelling device where literary audiences possess critical insights withheld from characters", "literature",
+        makeVec60(11, 0.86f, 0.89f, 0.82f, 0.77f, 12, 0.19f), dist);
+    db.insert("Iambic Pentameter: poetic metrical cadence featuring five feet of alternating unstressed and stressed syllables", "literature",
+        makeVec60(11, 0.82f, 0.81f, 0.88f, 0.83f, 12, 0.22f), dist);
+    db.insert("Magical Realism: narrative literary genre combining hyper-realistic settings with fantastical mythical elements", "literature",
+        makeVec60(11, 0.88f, 0.83f, 0.79f, 0.87f, 12, 0.27f), dist);
+    db.insert("Hero's Journey: comparative mythological narrative archetype detailing the classic departure, trial, and return", "literature",
+        makeVec60(11, 0.85f, 0.87f, 0.83f, 0.90f, 5, 0.25f), dist);
+
+    // Category 12: Art & Architecture (Dims 48-51)
+    db.insert("Chiaroscuro: visual art technique utilizing stark tonal contrasts of light and shadow to model dramatic volume", "art",
+        makeVec60(12, 0.90f, 0.86f, 0.78f, 0.72f, 11, 0.22f), dist);
+    db.insert("Bauhaus Movement: modern aesthetic doctrine integrating craftsmanship, industrial functionalism, and fine arts", "art",
+        makeVec60(12, 0.85f, 0.91f, 0.80f, 0.76f, 5, 0.20f), dist);
+    db.insert("Linear Perspective: mathematical geometric system creating the illusion of spatial three-dimensional depth", "art",
+        makeVec60(12, 0.82f, 0.80f, 0.89f, 0.84f, 1, 0.26f), dist);
+    db.insert("Impressionism: revolutionary art movement capturing optical qualities of natural light through visible brushwork", "art",
+        makeVec60(12, 0.88f, 0.83f, 0.77f, 0.86f, 2, 0.18f), dist);
+    db.insert("Gothic Architecture: medieval architectural tradition defined by soaring ribbed vaults, pointed arches, and buttresses", "art",
+        makeVec60(12, 0.84f, 0.88f, 0.82f, 0.89f, 5, 0.27f), dist);
+
+    // Category 13: Food & Culinary Arts (Dims 52-55)
+    db.insert("Neapolitan Pizza: wood-fired artisan flatbread topped with San Marzano tomatoes, fresh mozzarella, and basil", "food",
+        makeVec60(13, 0.90f, 0.86f, 0.78f, 0.72f, 7, 0.15f), dist);
+    db.insert("Sushi: traditional Japanese culinary art combining seasoned vinegared rice with pristine raw sashimi", "food",
+        makeVec60(13, 0.86f, 0.90f, 0.82f, 0.76f, 7, 0.17f), dist);
+    db.insert("Ramen: Japanese noodle broth dish featuring rich tonkotsu or shoyu broth, scallions, nori, and chashu pork", "food",
+        makeVec60(13, 0.82f, 0.78f, 0.90f, 0.84f, 7, 0.16f), dist);
+    db.insert("Tacos: iconic Mexican street dish composed of warm corn tortillas stuffed with braised meats and salsa", "food",
+        makeVec60(13, 0.78f, 0.82f, 0.86f, 0.90f, 7, 0.14f), dist);
+    db.insert("Croissant: laminated French viennoiserie pastry folded with European butter to achieve flaky airy layers", "food",
+        makeVec60(13, 0.85f, 0.80f, 0.76f, 0.82f, 8, 0.18f), dist);
+
+    // Category 14: Sports & Athletics (Dims 56-59)
+    db.insert("Basketball: dynamic team sport centered on dribbling, perimeter shooting, screens, and fast-break points", "sports",
+        makeVec60(14, 0.91f, 0.85f, 0.78f, 0.72f, -1), dist);
+    db.insert("Football: strategic gridiron sport combining precision forward passing, defensive formations, and touchdowns", "sports",
+        makeVec60(14, 0.87f, 0.89f, 0.82f, 0.76f, -1), dist);
+    db.insert("Tennis: individual racket sport requiring explosive lateral court agility, topspin volleys, and precise serves", "sports",
+        makeVec60(14, 0.83f, 0.80f, 0.88f, 0.82f, -1), dist);
+    db.insert("Chess: classical tactical board game involving opening memorization, pawn structures, and mating combinations", "sports",
+        makeVec60(14, 0.80f, 0.84f, 0.78f, 0.90f, 0, 0.25f), dist);
+    db.insert("Swimming: competitive aquatic sport encompassing synchronized freestyle, backstroke, breaststroke, and butterfly", "sports",
+        makeVec60(14, 0.85f, 0.82f, 0.86f, 0.80f, 2, 0.17f), dist);
 }
 
 // =====================================================================

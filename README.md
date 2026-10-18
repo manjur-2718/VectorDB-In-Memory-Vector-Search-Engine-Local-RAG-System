@@ -35,12 +35,14 @@ Browser Client                               -->  Typewriter rendering + localSt
 
 | Component | Technical Details |
 |---|---|
+| **Multi-Disciplinary Search Space** | **60-dimensional dense coordinate system** spanning 15 academic and humanistic categories (75 semantic anchor vectors) with dominant, cross-disciplinary, and ambient activations |
 | **Indexing Algorithms** | **HNSW** (O(log N) approximate search), **KD-Tree** (exact axis-aligned partitioning), **Brute Force** (O(N) exact baseline) |
 | **Distance Metrics** | Cosine Similarity, Euclidean Distance (L2), Manhattan Distance (L1) |
 | **Dimensionality Reduction** | Principal Component Analysis (PCA) projection to 2D for live vector space visualization |
-| **Document Processing** | Automatic sliding-window chunking (250 words per chunk with overlap) and dense embedding ingestion |
+| **Interactive Visualizer** | 2D PCA scatter plot with node-click search, 15-category legend with hover glow, quick domain query chips, and 60D coordinate inspector |
+| **Document Processing** | Automatic sliding-window chunking (250 words per chunk with overlap) and dense embedding ingestion via Ollama |
 | **Conversational Context Engine** | Sliding-window memory buffer (up to 20 messages / 10 multi-turn exchanges), pronoun resolution, and contextual search fallback |
-| **RAG Pipeline** | Context-injected prompt synthesis queried against local LLM instances with anti-hallucination stop tokens |
+| **RAG Pipeline** | Context-injected prompt synthesis queried against local LLM instances (`llama3.2`) with anti-hallucination stop tokens |
 | **Session Persistence** | Automatic browser `localStorage` synchronization preserving multi-turn chat threads across page reloads |
 | **HTTP Interface** | Embedded REST API providing complete CRUD, search, inspection, conversation, and benchmark endpoints |
 
@@ -100,7 +102,7 @@ Upon successful startup, the server logs initialization metrics and starts liste
 ```text
 === VectorDB Engine ===
 http://localhost:8080
-20 demo vectors | 16 dims | HNSW+KD-Tree+BruteForce
+75 demo vectors | 60 dims | HNSW+KD-Tree+BruteForce
 Ollama: ONLINE
   embed model: nomic-embed-text  gen model: llama3.2
 ```
@@ -115,11 +117,13 @@ http://localhost:8080
 ## User Interface Guide
 
 ### Vector Search and Benchmarking
-- Query semantic concepts against pre-loaded 16-dimensional reference vectors.
-- Select between **HNSW**, **KD-Tree**, or **Brute Force** algorithms.
-- Choose distance metrics: **Cosine**, **Euclidean**, or **Manhattan**.
-- Execute queries with the **Search** action to view nearest neighbors and highlighted cluster positions on the 2D PCA plot.
-- Use **Compare All Algos** to execute simultaneous lookups across all indexes and view timing benchmarks in microseconds.
+- **60-Dimensional Reference Space**: Query semantic concepts across pre-loaded 60-dimensional reference vectors spanning 15 domains (CS, Mathematics, Physics, Geology, Geopolitics, History, Education, Biology, Chemistry, Economics, Philosophy, Literature, Art, Food, and Sports).
+- **Quick-Query Domain Chips**: Click one-touch chips below the search input (`Physics`, `Geology`, `History`, `Education`, `Biology`, `Literature`, `Economics`, `Art`) to instantly execute representative queries and observe real-time dimensional activations.
+- **Interactive 15-Category Legend**: Hovering over any category row dynamically pulses and highlights all points belonging to that category across the 2D PCA canvas; clicking a category immediately populates a domain query and triggers search.
+- **Interactive 2D PCA Scatter Plot**: Visualizes the global distribution of 75 vectors and ingested documents projected from high dimensions down to 2D. Hover over any point to inspect metadata; click any point to populate its description into the search bar and run nearest-neighbor search.
+- **60D Query Embedding Inspector**: Real-time canvas bar chart visualizing all 60 coordinates grouped by 15 domain labels (`CS`, `MTH`, `PHY`, `GEO`, `POL`, `HIS`, `EDU`, `BIO`, `CHM`, `ECN`, `PHL`, `LIT`, `ART`, `FOD`, `SPT`). Hover over any individual bar to reveal its exact coordinate value, dimension index, and category mapping.
+- **Algorithm Comparison**: Select between **HNSW**, **KD-Tree**, or **Brute Force** algorithms with **Cosine**, **Euclidean**, or **Manhattan** distance metrics.
+- **Microsecond Benchmarking**: Execute **Compare All Algos** to run simultaneous lookups across all indexing strategies and view microsecond-level timing comparisons.
 
 ### Document Ingestion
 - Input arbitrary plain text (articles, lecture notes, or documentation).
@@ -131,6 +135,36 @@ http://localhost:8080
 - The system embeds the query, searches the HNSW index for the top-3 matching chunks, and forwards the retrieved context to `llama3.2`.
 - View synthesized responses with real-time typewriter rendering, including expandable references displaying the exact context chunks used by the model.
 - **Sliding Context Window Memory**: Maintains a conversational memory buffer of up to **20 messages** (multi-turn dialogue history). Older messages slide out automatically once the 20-message threshold is reached, replicating standard production LLM context management with an in-UI status indicator and memory reset control.
+
+---
+
+## 60-Dimensional Multi-Disciplinary Vector Space
+
+The reference search space is engineered with a **60-dimensional dense coordinate system** partitioned across **15 distinct academic and humanistic domains** (4 dedicated dimensions per domain, comprising 75 curated semantic anchor concepts):
+
+| Coordinate Range | Category | Identifier | Key Semantic Dimensions |
+|---|---|---|---|
+| `Dims 0–3` | Computer Science & Algorithms | `cs` | Data Structures, Complexity Analysis, Search Traversals, Memory Models |
+| `Dims 4–7` | Mathematics & Logic | `math` | Infinitesimal Calculus, Linear Algebra & Matrices, Probability, Number Theory |
+| `Dims 8–11` | Physics & Astronomy | `physics` | Quantum Mechanics, Spacetime Relativity, Thermodynamics, Electromagnetism |
+| `Dims 12–15` | Geology & Earth Sciences | `geology` | Plate Tectonics, Mineralogy, Stratigraphy, Mantle Convection |
+| `Dims 16–19` | Geopolitics & Diplomacy | `geopolitics` | International Sovereignty, Heartland Strategy, Deterrence, Maritime Law |
+| `Dims 20–23` | World History & Antiquity | `history` | Industrialization, Trade Networks, Constitutional Law, Renaissance Humanism |
+| `Dims 24–27` | Education & Pedagogy | `education` | Socratic Dialectic, Cognitive Taxonomies, Constructivism, Spaced Retrieval |
+| `Dims 28–31` | Biology & Life Sciences | `biology` | Gene Editing (CRISPR), Cellular Respiration, DNA Helices, Natural Selection |
+| `Dims 32–35` | Chemistry & Molecular Science | `chemistry` | Periodic Valence, Covalent Bonding, Acid-Base Neutralization, Gibbs Free Energy |
+| `Dims 36–39` | Economics & Global Finance | `economics` | Price Elasticity, Central Banking, Comparative Advantage, Fiscal Interventions |
+| `Dims 40–43` | Philosophy & Ethics | `philosophy` | Deontological Maxims, Utilitarianism, Epistemology, Existential Authenticity |
+| `Dims 44–47` | Literature & Linguistics | `literature` | Stream of Consciousness, Dramatic Irony, Poetic Cadence, Monomyth Archetypes |
+| `Dims 48–51` | Art & Architecture | `art` | Chiaroscuro Modeling, Functionalist Bauhaus, Geometric Perspective, Impressionism |
+| `Dims 52–55` | Food & Culinary Arts | `food` | Fermentation & Dough, Raw Gastronomy, Broth Extraction, Laminated Pastries |
+| `Dims 56–59` | Sports & Athletics | `sports` | Kinetic Ball-handling, Gridiron Strategy, Racket Mechanics, Tactical Chess |
+
+### Coordinate Generation Mechanics
+1. **Dominant Channel Activation**: Vectors in a category feature high activations ($0.75 - 0.92$) across their 4 primary coordinate axes.
+2. **Latent Interdisciplinary Linkages**: Concepts sharing interdisciplinary relationships carry moderate secondary activations ($\approx 0.20$) in related domains (e.g., Quantum Physics connecting with Pure Mathematics, or Chess connecting with Computer Science).
+3. **Ambient Baseline Field**: Dimensions outside primary and secondary clusters retain subtle sinusoidal background variation ($0.04 - 0.08$), reflecting real-world dense embeddings.
+4. **Interactive 60D Bar Visualizer**: Hovering across bars in the UI reveals the exact coordinate value, dimension index, and category mapping.
 
 ---
 
@@ -198,19 +232,19 @@ The server exposes a RESTful HTTP API on `http://localhost:8080`.
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/search?v=f1,f2,...&k=5&metric=cosine&algo=hnsw` | Performs K-Nearest Neighbor (K-NN) search |
-| `POST` | `/insert` | Inserts a new vector into the demo index |
-| `DELETE` | `/delete/:id` | Deletes a vector by ID |
-| `GET` | `/items` | Returns all vectors in the demo database |
-| `GET` | `/benchmark?v=...&k=5&metric=cosine` | Executes latency comparison across all indexing strategies |
+| `GET` | `/search?v=f1,f2,...&k=5&metric=cosine&algo=hnsw` | Performs K-Nearest Neighbor (K-NN) search against the 60D reference database |
+| `POST` | `/insert` | Inserts a new 60D vector into the reference index (`{"metadata":"...","category":"...","embedding":[60 floats]}`) |
+| `DELETE` | `/delete/:id` | Deletes a reference vector by ID |
+| `GET` | `/items` | Returns all reference vectors in the 60D database |
+| `GET` | `/benchmark?v=...&k=5&metric=cosine` | Executes latency comparison across HNSW, KD-Tree, and Brute Force using a 60D vector |
 | `GET` | `/hnsw-info` | Returns layer distributions and connectivity metrics for the HNSW graph |
-| `GET` | `/stats` | Returns general database memory and element statistics |
+| `GET` | `/stats` | Returns database element counts (75 items), dimensionality (`dims: 60`), and algorithms |
 
 ### Document and RAG Endpoints
 
 | Method | Endpoint | Request Payload | Description |
 |---|---|---|---|
-| `POST` | `/doc/insert` | `{"title":"string","text":"string"}` | Chunks, embeds, and indexes document text |
+| `POST` | `/doc/insert` | `{"title":"string","text":"string"}` | Chunks, embeds, and indexes document text via `nomic-embed-text` |
 | `GET` | `/doc/list` | None | Lists all indexed document chunks |
 | `DELETE` | `/doc/delete/:id` | None | Removes a specific document chunk |
 | `POST` | `/doc/ask` | `{"question":"string","k":3,"history":[{"role":"user","content":"..."},{"role":"assistant","content":"..."}]}` | Executes full RAG pipeline (search + context + 20-message sliding memory + LLM generation) |
@@ -218,9 +252,15 @@ The server exposes a RESTful HTTP API on `http://localhost:8080`.
 
 ### API Usage Examples
 
-#### Nearest Neighbor Search via cURL
+#### Nearest Neighbor Search via cURL (60-Dimensional Query)
 ```powershell
-curl "http://localhost:8080/search?v=0.9,0.8,0.7,0.6,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1&k=3&metric=cosine&algo=hnsw"
+# Construct a 60D vector (e.g. activating Physics: Dims 8-11)
+$vec = (0..59 | ForEach-Object { if ($_ -ge 8 -and $_ -le 11) { 0.90 } else { 0.05 } }) -join ','
+curl "http://localhost:8080/search?v=$vec&k=3&metric=cosine&algo=hnsw"
+```
+Or directly passing the 60 comma-separated floats:
+```bash
+curl "http://localhost:8080/search?v=0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.92,0.86,0.80,0.75,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05,0.05&k=3&metric=cosine&algo=hnsw"
 ```
 
 #### Multi-Turn RAG Query with Conversation History via cURL
@@ -254,10 +294,11 @@ curl -X POST http://localhost:8080/doc/ask `
 
 ```text
 VectorDB/
-├── main.cpp        # Core application: Index implementations, REST API, RAG orchestration
-├── httplib.h       # Single-header HTTP/HTTPS server library
-├── index.html      # Web client: Visualizations, benchmark panel, and interactive chat
-└── README.md       # Technical documentation
+├── main.cpp        # Core engine: 60D multi-disciplinary reference space, 768D document RAG, HNSW/KD-Tree/BruteForce, REST API
+├── httplib.h       # Single-header C++ HTTP/HTTPS server library (yhirose/cpp-httplib)
+├── index.html      # Modern UI: 2D PCA scatter plot, 15-category legend, 60D coordinate inspector, multi-turn chat
+├── db.exe          # Standalone compiled executable binary (C++17, MinGW-w64)
+└── README.md       # Technical architecture, multi-disciplinary taxonomy, and API documentation
 ```
 
 ---
@@ -268,12 +309,12 @@ VectorDB/
 HNSW organizes high-dimensional vectors into a hierarchical graph structure inspired by skip lists. 
 - **Structure**: Bottom layer (Layer 0) contains all elements with dense connectivity. Each ascending layer contains an exponentially decaying subset of elements with longer-range links.
 - **Search**: Greedy routing starts at the sparse top layer to traverse large regions of vector space rapidly, progressively refining search candidates upon descending to lower layers.
-- **Characteristics**: Achieves logarithmic O(log N) search complexity and maintains high recall even in high-dimensional spaces (e.g., 768D).
+- **Characteristics**: Achieves logarithmic O(log N) search complexity and maintains high recall across both moderate ($d = 60$) and high-dimensional spaces (e.g., 768D).
 
 ### K-Dimensional Tree (KD-Tree)
 A binary space partitioning tree designed for exact Euclidean vector searches.
 - **Structure**: Recursively partitions space along median points, cycling through dimensions at each tree depth.
-- **Characteristics**: Highly efficient for low-dimensional spaces (d ≤ 20). In high-dimensional spaces (such as dense embeddings at 768D), tree pruning diminishes due to the curse of dimensionality, causing query times to approach O(N).
+- **Characteristics**: Highly effective for low-to-moderate dimensional spaces ($d \le 60$). In high-dimensional spaces (such as dense LLM embeddings at 768D), branch pruning diminishes due to the curse of dimensionality, causing query times to approach O(N) and illustrating why HNSW approximate graph indexing is preferred for production dense retrieval.
 
 ---
 
@@ -296,7 +337,7 @@ To use a lighter model variant for faster inference:
    ```powershell
    ollama pull llama3.2:1b
    ```
-2. Update the model identifier in [main.cpp](file:///e:/VectorDatabase/Your-OWN-AI/main.cpp):
+2. Update the model identifier in [main.cpp](file:///e:/Vector_Databse_Project/main.cpp):
    ```cpp
    std::string genModel = "llama3.2:1b";
    ```

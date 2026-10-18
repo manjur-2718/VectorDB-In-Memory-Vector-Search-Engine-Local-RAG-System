@@ -13,10 +13,21 @@
   --surface:  #1a1e2e;
   --border:   #262d40;
   --border-h: #374058;
-  --cs:       #4db8e8;
-  --math:     #b07ce8;
-  --food:     #e8945a;
-  --sports:   #4dd88a;
+  --cs:          #38bdf8;
+  --math:        #a855f7;
+  --physics:     #3b82f6;
+  --geology:     #d97706;
+  --geopolitics: #ec4899;
+  --history:     #eab308;
+  --education:   #06b6d4;
+  --biology:     #22c55e;
+  --chemistry:   #14b8a6;
+  --economics:   #10b981;
+  --philosophy:  #8b5cf6;
+  --literature:  #f43f5e;
+  --art:         #f97316;
+  --food:        #fb923c;
+  --sports:      #84cc16;
   --accent:   #5b7cf5;
   --accent-h: #7d9bff;
   --text:     #c5ccdb;
@@ -67,7 +78,7 @@ header h1 {
 /* ── LAYOUT ── */
 .layout { display: flex; flex: 1; overflow: hidden; }
 .left-panel {
-  width: 260px; flex-shrink: 0; background: var(--card);
+  width: 280px; flex-shrink: 0; background: var(--card);
   border-right: 1px solid var(--border); overflow-y: auto;
   padding: 18px; display: flex; flex-direction: column; gap: 20px;
 }
@@ -153,9 +164,38 @@ button {
 .algo-btn:hover { border-color: var(--border-h); color: var(--text); }
 .algo-btn.on { border-color: var(--accent); color: var(--accent-h); background: rgba(91,124,245,.1); }
 
-.legend { display: flex; flex-direction: column; gap: 6px; }
-.leg-row { display: flex; align-items: center; gap: 9px; font-size: 11px; color: var(--muted); }
-.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.leg-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: all .15s ease;
+}
+.leg-row:hover { color: var(--text-b); background: rgba(255,255,255,0.04); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 6px currentColor; }
+
+.qchips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.qchip {
+  font-size: 9px; font-family: 'JetBrains Mono', monospace; padding: 2px 6px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--muted); cursor: pointer; transition: all .15s ease;
+}
+.qchip:hover { border-color: var(--accent); color: var(--accent-h); background: rgba(91,124,245,.12); }
 
 /* ── RESULTS ── */
 .results { display: flex; flex-direction: column; gap: 8px; }
@@ -301,8 +341,18 @@ button {
     <div>
       <div class="sec">Query (Demo Vectors)</div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <input type="text" id="qInput" placeholder="binary tree, sushi, basketball..." />
+        <input type="text" id="qInput" placeholder="quantum physics, plate tectonics, diplomacy, socratic method..." />
         <button class="btn-p" onclick="runSearch()">SEARCH</button>
+      </div>
+      <div class="qchips">
+        <span class="qchip" onclick="quickSearch('Quantum Superposition')">Physics</span>
+        <span class="qchip" onclick="quickSearch('Plate Tectonics')">Geology</span>
+        <span class="qchip" onclick="quickSearch('Peace of Westphalia')">History</span>
+        <span class="qchip" onclick="quickSearch('Socratic Method')">Education</span>
+        <span class="qchip" onclick="quickSearch('CRISPR-Cas9 gene editing')">Biology</span>
+        <span class="qchip" onclick="quickSearch('Stream of Consciousness')">Literature</span>
+        <span class="qchip" onclick="quickSearch('Supply and Demand')">Economics</span>
+        <span class="qchip" onclick="quickSearch('Chiaroscuro lighting')">Art</span>
       </div>
     </div>
     <div>
@@ -327,13 +377,24 @@ button {
              oninput="document.getElementById('kLabel').textContent=this.value">
     </div>
     <div>
-      <div class="sec">Category Legend</div>
+      <div class="sec">Category Legend (15 Categories)</div>
       <div class="legend">
-        <div class="leg-row"><div class="dot" style="background:var(--cs)"></div>CS / Algorithms</div>
-        <div class="leg-row"><div class="dot" style="background:var(--math)"></div>Mathematics</div>
-        <div class="leg-row"><div class="dot" style="background:var(--food)"></div>Food &amp; Cooking</div>
-        <div class="leg-row"><div class="dot" style="background:var(--sports)"></div>Sports &amp; Games</div>
-        <div class="leg-row"><div class="dot" style="background:var(--green)"></div>Documents (RAG)</div>
+        <div class="leg-row" onclick="quickCategorySearch('cs')" onmouseenter="highlightCat('cs')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--cs)"></div>CS / Algorithms</div>
+        <div class="leg-row" onclick="quickCategorySearch('math')" onmouseenter="highlightCat('math')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--math)"></div>Mathematics</div>
+        <div class="leg-row" onclick="quickCategorySearch('physics')" onmouseenter="highlightCat('physics')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--physics)"></div>Physics</div>
+        <div class="leg-row" onclick="quickCategorySearch('geology')" onmouseenter="highlightCat('geology')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--geology)"></div>Geology</div>
+        <div class="leg-row" onclick="quickCategorySearch('geopolitics')" onmouseenter="highlightCat('geopolitics')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--geopolitics)"></div>Geopolitics</div>
+        <div class="leg-row" onclick="quickCategorySearch('history')" onmouseenter="highlightCat('history')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--history)"></div>World History</div>
+        <div class="leg-row" onclick="quickCategorySearch('education')" onmouseenter="highlightCat('education')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--education)"></div>Education</div>
+        <div class="leg-row" onclick="quickCategorySearch('biology')" onmouseenter="highlightCat('biology')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--biology)"></div>Biology</div>
+        <div class="leg-row" onclick="quickCategorySearch('chemistry')" onmouseenter="highlightCat('chemistry')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--chemistry)"></div>Chemistry</div>
+        <div class="leg-row" onclick="quickCategorySearch('economics')" onmouseenter="highlightCat('economics')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--economics)"></div>Economics</div>
+        <div class="leg-row" onclick="quickCategorySearch('philosophy')" onmouseenter="highlightCat('philosophy')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--philosophy)"></div>Philosophy</div>
+        <div class="leg-row" onclick="quickCategorySearch('literature')" onmouseenter="highlightCat('literature')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--literature)"></div>Literature</div>
+        <div class="leg-row" onclick="quickCategorySearch('art')" onmouseenter="highlightCat('art')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--art)"></div>Art &amp; Design</div>
+        <div class="leg-row" onclick="quickCategorySearch('food')" onmouseenter="highlightCat('food')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--food)"></div>Food &amp; Cooking</div>
+        <div class="leg-row" onclick="quickCategorySearch('sports')" onmouseenter="highlightCat('sports')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--sports)"></div>Sports &amp; Games</div>
+        <div class="leg-row" onclick="quickCategorySearch('doc')" onmouseenter="highlightCat('doc')" onmouseleave="highlightCat(null)"><div class="dot" style="background:var(--green)"></div>Documents (RAG)</div>
       </div>
     </div>
     <div>
@@ -342,9 +403,20 @@ button {
         <input type="text" id="addMeta" placeholder="Description..." />
         <select id="addCat">
           <option value="cs">CS / Algorithms</option>
-          <option value="math">Mathematics</option>
-          <option value="food">Food &amp; Cooking</option>
-          <option value="sports">Sports &amp; Games</option>
+          <option value="math">Mathematics &amp; Logic</option>
+          <option value="physics">Physics &amp; Astronomy</option>
+          <option value="geology">Geology &amp; Earth Science</option>
+          <option value="geopolitics">Geopolitics &amp; Diplomacy</option>
+          <option value="history">World History</option>
+          <option value="education">Education &amp; Pedagogy</option>
+          <option value="biology">Biology &amp; Life Sciences</option>
+          <option value="chemistry">Chemistry &amp; Materials</option>
+          <option value="economics">Economics &amp; Finance</option>
+          <option value="philosophy">Philosophy &amp; Ethics</option>
+          <option value="literature">Literature &amp; Linguistics</option>
+          <option value="art">Art &amp; Architecture</option>
+          <option value="food">Food &amp; Culinary Arts</option>
+          <option value="sports">Sports &amp; Athletics</option>
         </select>
         <button class="btn-s" onclick="addVector()">INSERT</button>
       </div>
@@ -380,8 +452,9 @@ button {
         </div>
       </div>
       <div>
-        <div class="sec">Query Embedding (16D)</div>
-        <canvas id="vecCvs" height="76"></canvas>
+        <div class="sec">Query Embedding (60D across 15 Categories)</div>
+        <canvas id="vecCvs" height="84"></canvas>
+        <div id="vecTip" style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-top:5px;display:flex;justify-content:space-between"><span>Hover bars for dimension breakdown</span><span>60D Total</span></div>
       </div>
       <div id="benchSec" style="display:none">
         <div class="sec">Algorithm Comparison</div>
@@ -458,19 +531,46 @@ button {
 // ════════════════════════════════════════════════════════════
 //  CONSTANTS
 // ════════════════════════════════════════════════════════════
-const API  = 'http://localhost:8080';
-const DIMS = 16;
-const COL  = { cs:'#4db8e8', math:'#b07ce8', food:'#e8945a', sports:'#4dd88a', doc:'#61d88a', default:'#7a8bb0' };
-const DIM_COL = ['#4db8e8','#4db8e8','#4db8e8','#4db8e8','#b07ce8','#b07ce8','#b07ce8','#b07ce8',
-                 '#e8945a','#e8945a','#e8945a','#e8945a','#4dd88a','#4dd88a','#4dd88a','#4dd88a'];
+const API  = (window.location && window.location.protocol.startsWith('http')) ? window.location.origin : 'http://localhost:8080';
+const DIMS = 60;
+
+const CAT_DEFS = [
+  { id:'cs',          label:'CS',   full:'CS / Algorithms',        color:'#38bdf8' },
+  { id:'math',        label:'MTH',  full:'Mathematics & Logic',    color:'#a855f7' },
+  { id:'physics',     label:'PHY',  full:'Physics & Astronomy',    color:'#3b82f6' },
+  { id:'geology',     label:'GEO',  full:'Geology & Earth Sci',    color:'#d97706' },
+  { id:'geopolitics', label:'POL',  full:'Geopolitics & Diplomacy', color:'#ec4899' },
+  { id:'history',     label:'HIS',  full:'World History',          color:'#eab308' },
+  { id:'education',   label:'EDU',  full:'Education & Pedagogy',   color:'#06b6d4' },
+  { id:'biology',     label:'BIO',  full:'Biology & Life Sci',     color:'#22c55e' },
+  { id:'chemistry',   label:'CHM',  full:'Chemistry & Materials',  color:'#14b8a6' },
+  { id:'economics',   label:'ECN',  full:'Economics & Finance',    color:'#10b981' },
+  { id:'philosophy',  label:'PHL',  full:'Philosophy & Ethics',    color:'#8b5cf6' },
+  { id:'literature',  label:'LIT',  full:'Literature & Language',  color:'#f43f5e' },
+  { id:'art',         label:'ART',  full:'Art & Architecture',     color:'#f97316' },
+  { id:'food',        label:'FOD',  full:'Food & Cooking',         color:'#fb923c' },
+  { id:'sports',      label:'SPT',  full:'Sports & Games',         color:'#84cc16' }
+];
+
+const COL = { doc:'#61d88a', default:'#7a8bb0' };
+CAT_DEFS.forEach(c => { COL[c.id] = c.color; });
+
+const DIM_COL = [];
+CAT_DEFS.forEach(c => {
+  for (let i = 0; i < 4; i++) DIM_COL.push(c.color);
+});
 
 // ════════════════════════════════════════════════════════════
 //  STATE
 // ════════════════════════════════════════════════════════════
 let allItems = [], pcaPoints = [], hitIds = new Set(), queryPt = null;
-let hoverItem = null, pulse = 0, selAlgo = 'hnsw', searchResults = [];
+let hoverItem = null, hoverCat = null, pulse = 0, selAlgo = 'hnsw', searchResults = [];
 let chatMemory = [];
 const MAX_MEMORY = 20;
+
+function highlightCat(catId) {
+  hoverCat = catId;
+}
 
 function updateMemoryBadge() {
   const badge = document.getElementById('memBadge');
@@ -549,32 +649,135 @@ function switchTab(name) {
 }
 
 // ════════════════════════════════════════════════════════════
-//  TEXT → 16-D EMBEDDING (for demo vectors)
+//  TEXT → 60-D EMBEDDING (for demo vectors across 15 categories)
 // ════════════════════════════════════════════════════════════
 const KW = {
-  cs:     ['algorithm','data','tree','graph','array','linked','hash','stack','queue','sort','binary','dynamic','programming','recursion','complexity','pointer','node','search','insert','bfs','dfs','heap','trie'],
-  math:   ['calculus','matrix','probability','theorem','integral','derivative','linear','algebra','equation','function','prime','modular','combinatorics','permutation','eigenvalue','statistics','proof'],
-  food:   ['food','pizza','sushi','ramen','pasta','recipe','cook','eat','restaurant','dish','ingredient','flavor','spice','noodle','bread','croissant','taco','fish','rice','soup'],
-  sports: ['sport','basketball','football','tennis','chess','swim','game','play','score','team','athlete','competition','match','tournament','olympic','dribble','tackle','serve']
+  cs: [
+    'algorithm','data','tree','graph','array','linked','hash','stack','queue',
+    'sort','binary','dynamic','programming','recursion','complexity','pointer',
+    'node','search','insert','bfs','dfs','heap','trie','compiler','code','software'
+  ],
+  math: [
+    'calculus','matrix','probability','theorem','integral','derivative','linear',
+    'algebra','equation','function','prime','modular','combinatorics','permutation',
+    'eigenvalue','statistics','proof','geometry','discrete','vector','differential'
+  ],
+  physics: [
+    'quantum','relativity','gravity','spacetime','thermodynamics','entropy',
+    'particle','photon','electron','quarks','superposition','electromagnetic',
+    'optics','mechanics','energy','momentum','wave','laser','newton','einstein'
+  ],
+  geology: [
+    'plate','tectonics','crust','mantle','seismic','earthquake','volcano',
+    'magma','mineral','rock','metamorphic','sedimentary','fossil','erosion',
+    'geological','strata','sediment','fault','continental','lithosphere'
+  ],
+  geopolitics: [
+    'geopolitics','diplomacy','sovereignty','treaty','westphalia','border',
+    'sanction','alliance','hegemony','foreign','doctrine','deterrence','maritime',
+    'superpower','embassy','treaties','negotiation','geopolitical','security'
+  ],
+  history: [
+    'revolution','empire','dynasty','civilization','antiquity','medieval',
+    'renaissance','monarch','colonial','industrial','treaty','war','constitution',
+    'charter','feudal','republic','ancient','century','reformation','crusade'
+  ],
+  education: [
+    'pedagogy','curriculum','socratic','bloom','taxonomy','constructivism',
+    'learning','student','teacher','classroom','instruction','memorization',
+    'retention','spaced','assessment','pedagogical','lecture','syllabus','school'
+  ],
+  biology: [
+    'biology','cell','gene','dna','rna','protein','crispr','photosynthesis',
+    'evolution','enzyme','organism','mutation','mitochondria','ribosome',
+    'metabolism','bacteria','ecological','species','genetics','respiration'
+  ],
+  chemistry: [
+    'chemistry','reaction','acid','base','covalent','bond','periodic','atomic',
+    'element','molecule','enthalpy','entropy','gibbs','electronegativity',
+    'solvent','solution','catalyst','polymer','electron','compound','valency'
+  ],
+  economics: [
+    'economics','market','inflation','supply','demand','monetary','fiscal',
+    'currency','gdp','liquidity','interest','macroeconomics','microeconomics',
+    'trade','tariff','deficit','capital','banking','recession','elasticity'
+  ],
+  philosophy: [
+    'philosophy','ethics','epistemology','moral','kant','plato','aristotle',
+    'utilitarianism','existentialism','stoicism','categorical','imperative',
+    'dialectic','ontology','virtue','metaphysics','consciousness','logic'
+  ],
+  literature: [
+    'literature','novel','poetry','poem','prose','narrative','irony','metaphor',
+    'symbolism','iambic','pentameter','tragedy','author','fiction','monomyth',
+    'stream','archetype','sonnet','stanza','character','literary'
+  ],
+  art: [
+    'art','painting','sculpture','architecture','bauhaus','chiaroscuro',
+    'perspective','baroque','impressionism','aesthetic','gallery','canvas',
+    'renaissance','gothic','design','modernism','composition','visual'
+  ],
+  food: [
+    'food','pizza','sushi','ramen','pasta','recipe','cook','eat','restaurant',
+    'dish','ingredient','flavor','spice','noodle','bread','croissant','taco',
+    'pastry','culinary','chef','baking','sauce','cuisine','gastronomy'
+  ],
+  sports: [
+    'sport','basketball','football','tennis','chess','swim','swimming','game',
+    'play','score','team','athlete','competition','match','tournament','olympic',
+    'dribble','tackle','serve','championship','fitness','athletics'
+  ]
 };
 
 function textToEmbedding(text) {
-  const t = text.toLowerCase(), ws = t.split(/\s+/);
-  const s = {cs:0,math:0,food:0,sports:0};
-  for (const w of ws)
-    for (const [cat, kws] of Object.entries(KW))
-      for (const kw of kws) if (w.includes(kw)||kw.startsWith(w)) { s[cat]+=0.35; break; }
+  const t = text.toLowerCase(), ws = t.split(/[^a-z0-9_-]+/);
+  const s = {};
+  CAT_DEFS.forEach(c => { s[c.id] = 0; });
+
+  for (const w of ws) {
+    if (w.length < 2) continue;
+    for (const [cat, kws] of Object.entries(KW)) {
+      for (const kw of kws) {
+        if (w === kw) {
+          s[cat] += 0.50;
+          break;
+        } else if (w.length >= 4 && (w.includes(kw) || kw.startsWith(w))) {
+          s[cat] += 0.35;
+          break;
+        }
+      }
+    }
+  }
+
+  const emb = new Array(DIMS).fill(0.08);
+
+  // If no direct keyword match, generate a deterministic pseudo-semantic distribution
+  let sum = Object.values(s).reduce((a,b)=>a+b, 0);
+  if (sum < 0.05) {
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) hash = (hash * 31 + text.charCodeAt(i)) & 0x7fffffff;
+    const p1 = hash % CAT_DEFS.length;
+    const p2 = (hash >> 4) % CAT_DEFS.length;
+    s[CAT_DEFS[p1].id] += 0.65;
+    s[CAT_DEFS[p2].id] += 0.35;
+  }
+
   const mx = Math.max(...Object.values(s), 0.01);
   const n = v => Math.min(v/mx*0.88, 0.94);
   const jitter = () => (Math.random()-.5)*.04;
-  const emb = new Array(16).fill(0.08);
-  const fill = (i,score) => {
-    if (score<.01) return;
-    const b = n(score);
-    emb[i]=Math.max(.05,b+jitter()); emb[i+1]=Math.max(.05,b+jitter());
-    emb[i+2]=Math.max(.05,b*.92+jitter()); emb[i+3]=Math.max(.05,b*.87+jitter());
-  };
-  fill(0,s.cs); fill(4,s.math); fill(8,s.food); fill(12,s.sports);
+
+  CAT_DEFS.forEach((c, idx) => {
+    const score = s[c.id];
+    if (score > 0.01) {
+      const b = n(score);
+      const base = idx * 4;
+      emb[base + 0] = Math.max(0.05, b + jitter());
+      emb[base + 1] = Math.max(0.05, b + jitter());
+      emb[base + 2] = Math.max(0.05, b * 0.92 + jitter());
+      emb[base + 3] = Math.max(0.05, b * 0.87 + jitter());
+    }
+  });
+
   return emb;
 }
 
@@ -659,21 +862,23 @@ function drawFrame() {
   for (const pt of pcaPoints) {
     const [cx,cy]=w2c(pt.x,pt.y);
     const col=COL[pt.item.category]||COL.default;
-    const isHit=hitIds.has(pt.item.id), r=isHit?9:6;
+    const isHit=hitIds.has(pt.item.id);
+    const isCatHover = hoverCat && (pt.item.category === hoverCat || (hoverCat === 'doc' && pt.item.category === 'doc'));
+    const r=isHit?9:(isCatHover?8:6);
 
-    if (isHit) {
+    if (isHit || isCatHover) {
       const pr=r+6+Math.sin(pulse)*3;
       ctx.beginPath();ctx.arc(cx,cy,pr,0,2*Math.PI);
-      ctx.strokeStyle=col+'44';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.strokeStyle=col+(isCatHover?'88':'44');ctx.lineWidth=isCatHover?2:1.5;ctx.stroke();
     }
 
     // Soft glow
     const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,r*2.5);
-    grd.addColorStop(0,col+(isHit?'55':'30'));grd.addColorStop(1,'transparent');
+    grd.addColorStop(0,col+(isHit||isCatHover?'55':'30'));grd.addColorStop(1,'transparent');
     ctx.beginPath();ctx.arc(cx,cy,r*2.5,0,2*Math.PI);ctx.fillStyle=grd;ctx.fill();
 
     // Core dot
-    ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);ctx.fillStyle=col;ctx.globalAlpha=isHit?1:.85;ctx.fill();ctx.globalAlpha=1;
+    ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);ctx.fillStyle=col;ctx.globalAlpha=(isHit||isCatHover)?1:.85;ctx.fill();ctx.globalAlpha=1;
 
     if (hoverItem&&hoverItem.id===pt.item.id) {
       ctx.beginPath();ctx.arc(cx,cy,r+4,0,2*Math.PI);ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.stroke();
@@ -709,14 +914,50 @@ sc.addEventListener('mousemove', e => {
     const [cx,cy]=w2c(pt.x,pt.y),d=Math.hypot(mx-cx,my-cy);
     if (d<best){best=d;hoverItem=pt.item;}
   }
+  sc.style.cursor = hoverItem ? 'pointer' : 'crosshair';
   const tip=document.getElementById('tip');
   if (hoverItem) {
     const col=COL[hoverItem.category]||COL.default;
     tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-8)+'px';
-    tip.innerHTML=`<span style="color:${col};font-weight:600">[${hoverItem.category}]</span><br>${hoverItem.metadata}`;
+    tip.innerHTML=`<span style="color:${col};font-weight:600">[${hoverItem.category.toUpperCase()}]</span> (click to search)<br>${hoverItem.metadata}`;
   } else tip.style.display='none';
 });
-sc.addEventListener('mouseleave',()=>{hoverItem=null;document.getElementById('tip').style.display='none';});
+sc.addEventListener('mouseleave',()=>{hoverItem=null;sc.style.cursor='default';document.getElementById('tip').style.display='none';});
+sc.addEventListener('click',()=>{
+  if (hoverItem) {
+    document.getElementById('qInput').value=hoverItem.metadata;
+    runSearch();
+  }
+});
+
+function quickSearch(query) {
+  document.getElementById('qInput').value = query;
+  runSearch();
+}
+
+function quickCategorySearch(catId) {
+  const sampleQueries = {
+    cs: 'binary search tree algorithm and dynamic programming',
+    math: 'calculus derivatives integrals linear algebra',
+    physics: 'quantum superposition general relativity thermodynamics',
+    geology: 'plate tectonics seismic mantle convection',
+    geopolitics: 'bilateral diplomacy exclusive economic zone sovereignty',
+    history: 'industrial revolution peace of westphalia renaissance',
+    education: 'socratic method bloom taxonomy spaced repetition',
+    biology: 'crispr cas9 dna double helix cellular respiration',
+    chemistry: 'periodic law covalent bonding gibbs free energy',
+    economics: 'supply and demand monetary policy price elasticity',
+    philosophy: 'categorical imperative utilitarianism epistemology stoicism',
+    literature: 'stream of consciousness dramatic irony iambic pentameter',
+    art: 'chiaroscuro linear perspective bauhaus impressionism',
+    food: 'neapolitan pizza authentic ramen sushi culinary',
+    sports: 'basketball tactical tournament athletic swimming',
+    doc: 'rag document knowledge context'
+  };
+  const q = sampleQueries[catId] || catId;
+  document.getElementById('qInput').value = q;
+  runSearch();
+}
 
 // ════════════════════════════════════════════════════════════
 //  LOAD DEMO ITEMS
@@ -786,20 +1027,48 @@ function renderResults(results) {
   }).join('');
 }
 
+let currentQueryEmb = null;
+
 function drawVecChart(emb) {
+  currentQueryEmb = emb;
   const vc=document.getElementById('vecCvs'),W=vc.parentElement.clientWidth;
-  vc.width=W;const vx=vc.getContext('2d');
-  vx.clearRect(0,0,W,76);vx.fillStyle='#0d1017';vx.fillRect(0,0,W,76);
-  const bw=(W-4)/DIMS;
+  vc.width=W;const H=84;vc.height=H;
+  const vx=vc.getContext('2d');
+  vx.clearRect(0,0,W,H);vx.fillStyle='#0d1017';vx.fillRect(0,0,W,H);
+  const pad=4, bw=(W-pad*2)/DIMS;
   for (let i=0;i<DIMS;i++){
-    const h=emb[i]*58,x=2+i*bw,col=DIM_COL[i];
-    vx.fillStyle=col+'88';vx.fillRect(x+1,63-h,bw-2,h);
+    const val=Math.max(0,Math.min(1,emb[i]||0)), h=val*52, x=pad+i*bw, col=DIM_COL[i]||'#7a8bb0';
+    vx.fillStyle=col+'bb';vx.fillRect(x+0.5,58-h,Math.max(1,bw-1),h);
   }
-  vx.font='500 8px JetBrains Mono, monospace';vx.textAlign='center';
-  [['CS',0],['MATH',4],['FOOD',8],['SPORT',12]].forEach(([lbl,gi],i)=>{
-    vx.fillStyle=Object.values(COL)[i]+'66';vx.fillText(lbl,2+(gi+1.5)*bw,74);
+  vx.fillStyle='rgba(255,255,255,0.08)';vx.fillRect(pad,58,W-pad*2,1);
+  vx.font='500 7px JetBrains Mono, monospace';vx.textAlign='center';
+  CAT_DEFS.forEach((c,idx)=>{
+    const gx=pad+(idx*4+2)*bw;
+    vx.fillStyle=c.color+'bb';vx.fillText(c.label,gx,72);
+    if(idx>0){
+      vx.fillStyle='rgba(255,255,255,0.08)';vx.fillRect(pad+idx*4*bw-0.5,6,1,52);
+    }
   });
   vx.textAlign='left';
+}
+
+const vcEl = document.getElementById('vecCvs');
+if (vcEl) {
+  vcEl.addEventListener('mousemove', e => {
+    if (!currentQueryEmb) return;
+    const rect = vcEl.getBoundingClientRect(), mx = e.clientX - rect.left;
+    const pad = 4, bw = (vcEl.width - pad * 2) / DIMS;
+    const i = Math.floor((mx - pad) / bw);
+    const tip = document.getElementById('vecTip');
+    if (i >= 0 && i < DIMS && tip) {
+      const catIdx = Math.floor(i / 4), cat = CAT_DEFS[catIdx], dNum = (i % 4) + 1;
+      tip.innerHTML = `<span style="color:${cat.color};font-weight:600">Dim ${i} [${cat.full} • d${dNum}]</span><span style="color:var(--text-b)">Val: ${(currentQueryEmb[i]||0).toFixed(4)}</span>`;
+    }
+  });
+  vcEl.addEventListener('mouseleave', () => {
+    const tip = document.getElementById('vecTip');
+    if (tip) tip.innerHTML = '<span>Hover bars for dimension breakdown</span><span>60D Total</span>';
+  });
 }
 
 async function runBenchmark() {
@@ -902,11 +1171,11 @@ async function insertDocument() {
       document.getElementById('docTitle').value='';
       document.getElementById('docText').value='';
 
-          // Insert a 16D fake vector into the visualizer DB so it shows up on the map
-          const emb16 = textToEmbedding(title + ' ' + text);
+          // Insert a 60D synthetic vector into the visualizer DB so it shows up on the map
+          const emb60 = textToEmbedding(title + ' ' + text);
           fetch(API+'/insert', {
             method:'POST', headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({metadata: title, category: 'doc', embedding: emb16})
+            body:JSON.stringify({metadata: title, category: 'doc', embedding: emb60})
           }).then(() => { loadItems().then(loadHNSW); });
 
       loadDocList(); checkOllamaStatus();
@@ -1000,9 +1269,9 @@ async function askAI() {
       if (sw > 0) queryPt = {x: sx/sw + (Math.random()-.5)*.015, y: sy/sw + (Math.random()-.5)*.015};
     } else {
       hitIds = new Set();
-      // Fallback: If no RAG docs match, visually move the star to the 16D semantic space anyway!
-      const emb16 = textToEmbedding(question);
-      fetch(`${API}/search?v=${emb16.join(',')}&k=3&metric=cosine&algo=hnsw`)
+      // Fallback: If no RAG docs match, visually move the star to the 60D semantic space anyway!
+      const emb60 = textToEmbedding(question);
+      fetch(`${API}/search?v=${emb60.join(',')}&k=3&metric=cosine&algo=hnsw`)
         .then(res2=>res2.json())
         .then(data2 => {
           if (data2.results && data2.results.length>0) {
